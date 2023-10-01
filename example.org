@@ -1,0 +1,3158 @@
+* development
+** magit
+*** magit
+#+begin_src emacs-lisp
+(use-package magit
+  ;;:commands (magit-status magit-get-current-branch)
+  :config
+  (setq magit-display-buffer-function 'magit-display-buffer-same-window-except-diff-v1
+        magit-diff-refine-hunk 'all
+        magit-refresh-verbose nil
+        magit-delete-by-moving-to-trash t)
+  ;; Speed up committing on windows
+  (on-platform-do
+   (windows
+    (setq magit-commit-show-diff nil)))
+  ;; Remove some functions from section hook for better performance
+  (remove-hook 'magit-status-sections-hook 'magit-insert-tags-header)
+  (remove-hook 'magit-status-sections-hook 'magit-insert-status-headers)
+  (remove-hook 'magit-status-sections-hook 'magit-insert-unpushed-to-pushremote)
+  (remove-hook 'magit-status-sections-hook 'magit-insert-unpulled-from-pushremote)
+  (remove-hook 'magit-status-sections-hook 'magit-insert-unpulled-from-upstream)
+  (remove-hook 'magit-status-sections-hook 'magit-insert-unpushed-to-upstream-or-recent))
+
+;; Escape key in magit
+(general-define-key
+ :keymaps 'transient-base-map
+ "<escape>" 'transient-quit-one)
+
+(defun jy/magit-remove-functions-from-section-hook ()
+  (interactive)
+  (remove-hook 'magit-status-sections-hook 'magit-insert-tags-header)
+  (remove-hook 'magit-status-sections-hook 'magit-insert-status-headers)
+  (remove-hook 'magit-status-sections-hook 'magit-insert-unpushed-to-pushremote)
+  (remove-hook 'magit-status-sections-hook 'magit-insert-unpulled-from-pushremote)
+  (remove-hook 'magit-status-sections-hook 'magit-insert-unpulled-from-upstream)
+  (remove-hook 'magit-status-sections-hook 'magit-insert-unpushed-to-upstream-or-recent))
+
+(defun jy/magit-restore-section-hook ()
+  (interactive)
+  (add-hook 'magit-status-sections-hook 'magit-insert-tags-header)
+  (add-hook 'magit-status-sections-hook 'magit-insert-status-headers)
+  (add-hook 'magit-status-sections-hook 'magit-insert-unpushed-to-pushremote)
+  (add-hook 'magit-status-sections-hook 'magit-insert-unpulled-from-pushremote)
+  (add-hook 'magit-status-sections-hook 'magit-insert-unpulled-from-upstream)
+  (add-hook 'magit-status-sections-hook 'magit-insert-unpushed-to-upstream-or-recent))
+#+end_src
+
+1. escape key in magit
+https://github.com/emacs-evil/evil-magit/issues/14
+
+2. speeding up magit by remove some functions from section hook:
+https://jakemccrary.com/blog/2020/11/14/speeding-up-magit/
+
+*** multi-magit
+#+begin_src emacs-lisp
+(use-package multi-magit
+  :straight (multi-magit :type git :host github :repo "luismbo/multi-magit")
+  :after magit
+  :config
+  (setq multi-magit-refresh-status-buffer t)
+  ;; Remove some functions from section hook for better performance
+  (remove-hook 'multi-magit-status-sections-hook 'multi-magit-insert-committed-changes))
+#+end_src
+
+*** git-timemachine
+#+begin_src emacs-lisp
+(use-package git-timemachine
+  :defer t)
+#+end_src
+
+commands:
+=git-timemachine=
+=git-timemachine-show-next-revision=
+=git-timemachine-show-previous-revision=
+
+*** abridge-diff
+#+begin_src emacs-lisp :tangle no
+(use-package abridge-diff
+  :defer t
+  ;;:after magit ;; optional, if you'd like to use with magit
+  ;;:init (abridge-diff-mode 1)
+  )
+#+end_src
+
+*** hl-todo
+#+begin_src emacs-lisp :tangle no
+(use-package hl-todo
+  :config
+  (global-hl-todo-mode 1)
+  (setq hl-todo-activate-in-modes '(prog-mode text-mode)
+        hl-todo-exclude-modes '(org-mode)))
+#+end_src
+
+to customize keyword faces:
+#+begin_src emacs-lisp :tangle no
+(setq hl-todo-keyword-faces
+      '(("TODO"   . "#FF0000")
+        ("FIXME"  . "#FF0000")
+        ("DEBUG"  . "#A020F0")
+        ("GOTCHA" . "#FF4500")
+        ("STUB"   . "#1E90FF")))
+#+end_src
+
+*** magit-todos
+#+begin_src emacs-lisp :tangle no
+(if (string-equal system-type "windows-nt")
+    (use-package magit-todos
+      :after magit
+      :config
+      (magit-todos-mode -1)
+      (setq magit-todos-nice nil))
+  (use-package magit-todos
+    :after magit
+    :config
+    (magit-todos-mode -1)))
+#+end_src
+
+requires ripgrep or grep
+
+keywords examples (all in upper case)
+1. todo
+2. fixme
+3. hack
+4. maybe
+5. bug
+
+program "nice" issue on windows:
+https://github.com/alphapapa/magit-todos/issues/10
+
+*** ztree
+#+begin_src emacs-lisp :tangle no
+(use-package ztree
+  :defer t)
+#+end_src
+
+commands:
+- ztree-diff
+- ztree-dir
+
+*** archive
+**** forge
+#+begin_src emacs-lisp :tangle no
+(use-package forge)
+#+end_src
+
+** projectile
+*** initial setup
+#+begin_src emacs-lisp
+(use-package projectile
+  :defer t
+  :diminish projectile-mode
+  :config (projectile-mode)
+  ;;:bind-keymap
+  ;;("C-c p" . projectile-command-map)
+  :init
+  ;;(when (file-directory-p "~/Projects/Code")
+  ;;  (setq projectile-project-search-path '("~/Projects/Code")))
+  (setq projectile-switch-project-action #'projectile-dired))
+
+;; If using consult
+(use-package consult-projectile
+  :after projectile)
+
+;; If using counsel
+;;(use-package counsel-projectile
+;;  :after projectile)
+#+end_src
+
+*** trust local variables
+#+begin_src emacs-lisp
+(put 'projectile-project-run-cmd 'safe-local-variable #'stringp)
+(put 'projectile-project-compilation-cmd 'safe-local-variable #'stringp)
+#+end_src
+
+*** project configurations
+This section contains project configurations for specific projects that I can't drop a .dir-locals.el file into. Documentation on this approach can be found in the Emacs manual.
+
+#+begin_src emacs-lisp :tangle no
+(dir-locals-set-class-variables 'Atom
+  `((nil . ((projectile-project-name . "Atom")
+            (projectile-project-compilation-dir . nil)
+            (projectile-project-compilation-cmd . "script/build")))))
+
+(dir-locals-set-directory-class (expand-file-name "~/Projects/Code/atom") 'Atom)
+#+end_src
+
+** file explorer
+*** treemacs
+#+begin_src emacs-lisp :tangle no
+(use-package treemacs
+  :defer t
+  ;:init
+  ;(with-eval-after-load 'winum
+  ;  (define-key winum-keymap (kbd "M-0") #'treemacs-select-window))
+  :config
+  (progn
+    (setq treemacs-collapse-dirs                 (if treemacs-python-executable 3 0)
+          treemacs-deferred-git-apply-delay      0.5
+          treemacs-directory-name-transformer    #'identity
+          treemacs-display-in-side-window        t
+          treemacs-eldoc-display                 t
+          treemacs-file-event-delay              5000
+          treemacs-file-extension-regex          treemacs-last-period-regex-value
+          treemacs-file-follow-delay             0.2
+          treemacs-file-name-transformer         #'identity
+          treemacs-follow-after-init             t
+          treemacs-git-command-pipe              ""
+          treemacs-goto-tag-strategy             'refetch-index
+          treemacs-indentation                   2
+          treemacs-indentation-string            " "
+          treemacs-is-never-other-window         nil
+          treemacs-max-git-entries               5000
+          treemacs-missing-project-action        'ask
+          treemacs-move-forward-on-expand        nil
+          treemacs-no-png-images                 nil
+          treemacs-no-delete-other-windows       t
+          treemacs-project-follow-cleanup        nil
+          treemacs-persist-file                  (expand-file-name ".cache/treemacs-persist" user-emacs-directory)
+          treemacs-position                      'left
+          treemacs-recenter-distance             0.1
+          treemacs-recenter-after-file-follow    nil
+          treemacs-recenter-after-tag-follow     nil
+          treemacs-recenter-after-project-jump   'always
+          treemacs-recenter-after-project-expand 'on-distance
+          treemacs-show-cursor                   nil
+          treemacs-show-hidden-files             t
+          treemacs-silent-filewatch              nil
+          treemacs-silent-refresh                nil
+          treemacs-sorting                       'alphabetic-asc
+          treemacs-space-between-root-nodes      t
+          treemacs-tag-follow-cleanup            t
+          treemacs-tag-follow-delay              1.5
+          treemacs-user-mode-line-format         nil
+          treemacs-user-header-line-format       nil
+          treemacs-width                         35
+          treemacs-workspace-switch-cleanup      nil)
+
+    ;; The default width and height of the icons is 22 pixels. If you are
+    ;; using a Hi-DPI display, uncomment this to double the icon size.
+    ;;(treemacs-resize-icons 44)
+
+    (treemacs-follow-mode t)
+    (treemacs-filewatch-mode t)
+    (treemacs-fringe-indicator-mode t)
+    (pcase (cons (not (null (executable-find "git")))
+                 (not (null treemacs-python-executable)))
+      (`(t . t)
+       (treemacs-git-mode 'deferred))
+      (`(t . _)
+       (treemacs-git-mode 'simple)))))
+  ;:bind
+  ;(:map global-map
+  ;      ("M-0"       . treemacs-select-window)
+  ;      ("C-x t 1"   . treemacs-delete-other-windows)
+  ;      ("C-x t t"   . treemacs)
+  ;      ("C-x t B"   . treemacs-bookmark)
+  ;      ("C-x t C-t" . treemacs-find-file)
+  ;      ("C-x t M-t" . treemacs-find-tag)))
+
+(use-package treemacs-evil
+  :after treemacs evil
+  :straight t)
+
+(use-package treemacs-projectile
+  :after treemacs projectile
+  :straight t)
+
+(use-package treemacs-icons-dired
+  :after treemacs dired
+  :straight t
+  :config (treemacs-icons-dired-mode))
+
+(use-package treemacs-magit
+  :after treemacs magit
+  :straight t)
+
+;(use-package treemacs-persp ;;treemacs-persective if you use perspective.el vs. persp-mode
+;  :after treemacs persp-mode ;;or perspective vs. persp-mode
+;  :straight t
+;  :config (treemacs-set-scope-type 'Perspectives))
+#+end_src
+
+** completion
+*** company
+**** company
+#+begin_src emacs-lisp
+(use-package company
+  :defer t
+  :diminish company-mode
+
+  ;;:init
+  ;;(add-hook 'after-init-hook 'global-company-mode)
+  ;;:hook (prog-mode . company-mode)
+
+  ;;:bind
+  ;;(:map company-active-map
+  ;;      ("TAB" . company-select-next)
+  ;;      ([tab] . company-select-next)
+  ;;      ("S-TAB" . company-select-previous)
+  ;;      ([backtab] . company-select-previous))
+
+  :custom
+  (company-minimum-prefix-length 2)
+  (company-idle-delay nil) ; If using idle completion, use value 0.5
+  (company-tooltip-idle-delay 0.5)
+  (company-selection-wrap-around t)
+  (company-dabbrev-downcase nil)
+  (company-dabbrev-ignore-case nil)
+  (company-etags-ignore-case nil)
+  (company-keywords-ignore-case nil)
+  (company-dabbrev-code-ignore-case nil)
+  (company-show-quick-access t) ;; Show numbers
+  (company-format-margin-function 'company-text-icons-margin) ;; Use text instead of symbols
+  (company-tooltip-align-annotations t)
+  (company-dabbrev-code-everywhere t))
+
+(defun jy/company-toggle-idle-completion ()
+  (interactive)
+  (if (equal company-idle-delay nil)
+      (progn
+        (setq company-idle-delay 0.5)
+        (message "Company idel completion enabled!"))
+    (progn
+      (setq company-idle-delay nil)
+      (message "Company idel completion disabled!"))))
+#+end_src
+
+**** company-prescient
+#+begin_src emacs-lisp
+(use-package company-prescient
+  :after company
+  :config
+  (company-prescient-mode 1)
+  (prescient-persist-mode 1))
+#+end_src
+
+**** select by numbers
+#+begin_src emacs-lisp
+(defun jy/company-number ()
+  "Forward to `company-complete-number'.
+
+Unless the number is potentially part of the candidate.
+In that case, insert the number."
+  (interactive)
+  (let* ((k (this-command-keys))
+         (re (concat "^" company-prefix k)))
+    (if (cl-find-if (lambda (s) (string-match re s))
+                    company-candidates)
+        (self-insert-command 1)
+      (company-complete-number (string-to-number k)))))
+
+(defun jy/company-bind-num-keys ()
+  (let ((map company-active-map))
+    (mapc
+     (lambda (x)
+       (define-key map (format "%d" x) 'jy/company-number))
+     (number-sequence 0 9))
+    (define-key map " " (lambda ()
+                          (interactive)
+                          (company-abort)
+                          (self-insert-command 1)))
+    (define-key map (kbd "<return>") nil)))
+
+(add-hook 'company-mode-hook 'jy/company-bind-num-keys)
+#+end_src
+
+source:
+https://oremacs.com/2017/12/27/company-numbers/
+
+#+begin_quote
+Initially, I would just bind company-complete-number. The problem with that was that if my candidate list was ("var0" "var1" "var2"), then entering 1 means:
+
+1. select the first candidate (i.e. "var0"), instead of:
+2. insert "1", resulting in "var1", i.e. the second candidate.
+
+My customization will now check company-candidates—the list of possible completions—for the above mentioned conflict. And if it's detected, the key pressed will be inserted instead of being used to select a candidate.
+#+end_quote
+
+**** use fixed-pitch font
+#+begin_src emacs-lisp
+(custom-set-faces
+ '(company-tooltip
+   ((t (:inherit 'fixed-pitch)))))
+#+end_src
+
+This solves aligning issue when using variable-pitch font in org-mode
+
+**** archive
+***** company-box
+#+begin_src emacs-lisp :tangle no
+(use-package company-box
+  :diminish
+  :hook (company-mode . company-box-mode)
+  :custom
+  (company-box-scrollbar nil))
+#+end_src
+
+*** archive
+**** corfu
+***** corfu config 1
+****** corfu
+#+begin_src emacs-lisp :tangle no
+(use-package corfu
+  ;; Optional customizations
+  ;; :custom
+  ;; (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
+  ;; (corfu-auto t)                 ;; Enable auto completion
+  ;; (corfu-separator ?\s)          ;; Orderless field separator
+  ;; (corfu-quit-at-boundary nil)   ;; Never quit at completion boundary
+  ;; (corfu-quit-no-match nil)      ;; Never quit, even if there is no match
+  ;; (corfu-preview-current nil)    ;; Disable current candidate preview
+  ;; (corfu-preselect 'prompt)      ;; Preselect the prompt
+  ;; (corfu-on-exact-match nil)     ;; Configure handling of exact matches
+  ;; (corfu-scroll-margin 5)        ;; Use scroll margin
+
+  ;; Enable Corfu only for certain modes.
+  ;; :hook ((prog-mode . corfu-mode)
+  ;;        (shell-mode . corfu-mode)
+  ;;        (eshell-mode . corfu-mode))
+
+  :bind
+  ;; Configure SPC for separator insertion
+  (:map corfu-map ("SPC" . corfu-insert-separator))
+
+  ;; Recommended: Enable Corfu globally.
+  ;; This is recommended since Dabbrev can be used globally (M-/).
+  ;; See also `corfu-exclude-modes'.
+  :init
+  (global-corfu-mode))
+
+;; A few more useful configurations...
+(use-package emacs
+  :init
+  ;; TAB cycle if there are only few candidates
+  (setq completion-cycle-threshold 3)
+
+  ;; Emacs 28: Hide commands in M-x which do not apply to the current mode.
+  ;; Corfu commands are hidden, since they are not supposed to be used via M-x.
+  ;; (setq read-extended-command-predicate
+  ;;       #'command-completion-default-include-p)
+
+  ;; Enable indentation+completion using the TAB key.
+  ;; `completion-at-point' is often bound to M-TAB.
+  (setq tab-always-indent 'complete))
+#+end_src
+
+****** dabbrev
+#+begin_src emacs-lisp :tangle no
+;; Use Dabbrev with Corfu!
+(use-package dabbrev
+  ;; Swap M-/ and C-M-/
+  :bind (("M-/" . dabbrev-completion)
+         ("C-M-/" . dabbrev-expand))
+  ;; Other useful Dabbrev configurations.
+  :custom
+  (dabbrev-ignored-buffer-regexps '("\\.\\(?:pdf\\|jpe?g\\|png\\)\\'")))
+#+end_src
+
+****** transfer completion to the minibuffer
+#+begin_src emacs-lisp :tangle no
+(defun corfu-move-to-minibuffer ()
+  (interactive)
+  (when completion-in-region--data
+    (let ((completion-extra-properties corfu--extra)
+          completion-cycle-threshold completion-cycling)
+      (apply #'consult-completion-in-region completion-in-region--data))))
+(keymap-set corfu-map "M-m" #'corfu-move-to-minibuffer)
+(add-to-list 'corfu-continue-commands #'corfu-move-to-minibuffer)
+#+end_src
+
+***** corfu config 2
+****** emacs config for completion
+#+begin_src emacs-lisp :tangle no
+(use-package emacs
+  :init
+  ;; TAB cycle if there are only few candidates
+  (setq completion-cycle-threshold 3)
+
+  ;; Emacs 28: Hide commands in M-x which do not apply to the current mode.
+  ;; Corfu commands are hidden, since they are not supposed to be used via M-x.
+  ;; (setq read-extended-command-predicate
+  ;;       #'command-completion-default-include-p)
+
+  ;; Enable indentation+completion using the TAB key.
+  ;; `completion-at-point' is often bound to M-TAB.
+  (setq tab-always-indent 'complete))
+#+end_src
+
+****** corfu
+#+begin_src emacs-lisp :tangle no
+(use-package corfu
+  ;; Optional customizations
+  :custom
+  (corfu-cycle t)                  ; Allows cycling through candidates
+  (corfu-auto t)                   ; Enable auto completion
+  (corfu-auto-prefix 2)            ; Enable auto completion
+  (corfu-auto-delay 0.0)           ; Enable auto completion
+  (corfu-quit-at-boundary 'separator)
+  (corfu-echo-documentation 0.25)   ; Enable auto completion
+  (corfu-preview-current 'insert)   ; Do not preview current candidate
+  (corfu-preselect-first nil)
+
+  ;; Optionally use TAB for cycling, default is `corfu-complete'.
+  :bind (:map corfu-map
+              ("M-SPC" . corfu-insert-separator)
+              ("TAB"     . corfu-next)
+              ([tab]     . corfu-next)
+              ("S-TAB"   . corfu-previous)
+              ([backtab] . corfu-previous)
+              ("S-<return>" . corfu-insert)
+              ("RET"     . nil) ;; leave my enter alone!
+              )
+
+  :init
+  (global-corfu-mode))
+#+end_src
+
+**** auto-complete
+#+begin_src emacs-lisp :tangle no
+(use-package auto-complete
+  :diminish auto-complete-mode
+  :config
+  (ac-config-default))
+#+end_src
+
+** literate programming
+*** outlines
+**** outshine
+#+begin_src emacs-lisp
+(use-package outshine
+  :hook ((prog-mode LilyPond-mode ledger-mode) . outshine-mode)
+  :diminish
+  :config
+  (setq outshine-startup-folded-p t
+        outshine-cycle-silently t)
+
+  ;; Customize faces
+  (dolist (face '((outshine-level-1 . 1.2)
+                  (outshine-level-2 . 1.2)
+                  (outshine-level-3 . 1.2)
+                  (outshine-level-4 . 1.2)
+                  (outshine-level-5 . 1.2)
+                  (outshine-level-6 . 1.2)
+                  (outshine-level-7 . 1.2)
+                  (outshine-level-8 . 1.2)))
+    (set-face-attribute (car face) nil
+                        :font jy/variable-width-font-name
+                        :weight 'bold
+                        :height (cdr face)
+                        ;;:background "#191919"
+                        )))
+#+end_src
+
+By default, =outline-regexp= for emacs-lisp is ";;[;]\\{1,8\\} ", for anything else it is comment+space+asterisk, e.g. "# [*]\\{1,8\\} "
+
+To change outline-regexp for emacs-lisp
+#+begin_src emacs-lisp :tangle no
+(add-hook 'emacs-lisp-mode-hook (lambda () (setq-local outline-regexp ";; [*]\\{1,8\\} ")))
+#+end_src
+
+**** outli
+#+begin_src emacs-lisp :tangle no
+(use-package outli
+  :straight (outli :type git :host github :repo "jdtsmith/outli")
+  :hook prog-mode)
+#+end_src
+
+**** built-in outline-minor-mode
+#+begin_src emacs-lisp :tangle no
+(add-hook 'prog-mode-hook 'outline-minor-mode)
+#+end_src
+
+**** alternatives
+Suggest replacements for Outshine (Org-style code folding with comments as headlines)
+https://old.reddit.com/r/emacs/comments/13zl35k/suggest_replacements_for_outshine_orgstyle_code/
+
+outli – simple outliner mode with org-like interaction for code, documents, etc.
+https://old.reddit.com/r/emacs/comments/xg4hlu/outli_simple_outliner_mode_with_orglike/
+
+#+begin_quote
+I like Outshine, but it's always been buggy, and after a system upgrade to Ubuntu 23.04 (with Emacs 28.2), it hasn't really been working at all, even with the latest Outshine from MELPA. outshine-cycle-buffer prints the expected messages in the minibuffer, but has no apparent effect on the buffer contents. Looking at the GitHub issues, I think the package isn't getting the TLC it needs.
+
+I'm not eager to try fixing Outshine myself, so what would you suggest as alternative approaches for code folding or navigating large files? I have low vision, so I use big fonts, so I don't have many lines of code on screen at once, generally about 20.
+#+end_quote
+
+#+begin_quote
+I had the same experience as you, and wanted nice automated headings, so I wrote outli. It's mostly a thin wrapper around outline-minor-mode, and is much simpler that outshine, dropping many vestigial features, and adding org-like speed commands at heading positions.
+#+end_quote
+
+comment from alphapapa (outshine's current maintainer)
+#+begin_quote
+I think the package isn't getting the TLC it needs.
+
+You're not wrong. Its current maintainer(s?) don't use it much, if at all, anymore. Help would be welcomed.
+#+end_quote
+
+*** polymode
+**** example: mixing sql and python
+source:
+https://www.masteringemacs.org/article/polymode-multiple-major-modes-how-to-use-sql-python-in-one-buffer
+
+#+begin_src emacs-lisp :tangle no
+(use-package polymode
+  :ensure t
+  :mode ("\.py$" . poly-python-sql-mode)
+  :config
+  (setq polymode-prefix-key (kbd "C-c n"))
+  (define-hostmode poly-python-hostmode :mode 'python-mode)
+
+  (define-innermode poly-sql-expr-python-innermode
+    :mode 'sql-mode
+    :head-matcher (rx "r" (= 3 (char "\"'")) (* (any space)))
+    :tail-matcher (rx (= 3 (char "\"'")))
+    :head-mode 'host
+    :tail-mode 'host)
+
+  (defun poly-python-sql-eval-chunk (beg end msg)
+    "Calls out to `sql-send-region' with the polymode chunk region"
+    (sql-send-region beg end))
+
+  (define-polymode poly-python-sql-mode
+    :hostmode 'poly-python-hostmode
+    :innermodes '(poly-sql-expr-python-innermode)
+    (setq polymode-eval-region-function #'poly-python-sql-eval-chunk)
+    (define-key poly-python-sql-mode-map (kbd "C-c C-c") 'polymode-eval-chunk))
+
+  ;; Bug? Fix polymode kill chunk so it works.
+  (defun polymode-kill-chunk ()
+    "Kill current chunk."
+    (interactive)
+    (pcase (pm-innermost-span)
+      (`(,(or `nil `host) ,beg ,end ,_) (delete-region beg end))
+      (`(body ,beg ,_ ,_)
+       (goto-char beg)
+       (pm--kill-span '(body))
+       ;; (pm--kill-span '(head tail))
+       ;; (pm--kill-span '(head tail))
+       )
+      (`(tail ,beg ,end ,_)
+       (if (eq beg (point-min))
+           (delete-region beg end)
+         (goto-char (1- beg))
+         (polymode-kill-chunk)))
+      (`(head ,_ ,end ,_)
+       (goto-char end)
+       (polymode-kill-chunk))
+      (_ (error "Canoot find chunk to kill")))))
+#+end_src
+
+test python buffer
+#+begin_src python :tangle no
+def test():
+    """
+    Test SQL and Python polymode.
+    """
+
+    q1 = r"""
+    -- Get a list of all relations
+    \d
+    """
+    q2 = r"""
+    SELECT
+      first_name
+      , last_name
+    From emplyees
+    ;
+    """
+#+end_src
+
+**** my config
+***** config
+#+begin_src emacs-lisp
+(use-package polymode
+  ;; Diminish minor mode
+  :diminish poly-python-org-mode
+  :diminish poly-lisp-org-mode
+  :diminish poly-racket-org-mode
+  :diminish poly-lilypond-org-mode
+
+  :config
+  ;; Define polymode
+  ;; For python
+  ;; ---------------------------------------------
+  (define-hostmode poly-python-org-hostmode
+    :mode 'python-ts-mode)
+
+  (define-innermode poly-python-org-innermode
+    :mode 'org-mode
+    :head-matcher (rx (= 3 (char "\"'")) " org")
+    :tail-matcher (rx (= 3 (char "\"'")))
+    :head-mode 'host
+    :tail-mode 'host)
+
+  (define-polymode poly-python-org-mode
+    :hostmode 'poly-python-org-hostmode
+    :innermodes '(poly-python-org-innermode))
+  ;; ---------------------------------------------
+
+  ;; For common lisp
+  ;; ---------------------------------------------
+  (define-hostmode poly-lisp-org-hostmode
+    :mode 'lisp-mode)
+
+  (define-innermode poly-lisp-org-innermode
+    :mode 'org-mode
+    :head-matcher (rx "#| " "org")
+    :tail-matcher (rx "|#")
+    :head-mode 'host
+    :tail-mode 'host)
+
+  (define-polymode poly-lisp-org-mode
+    :hostmode 'poly-lisp-org-hostmode
+    :innermodes '(poly-lisp-org-innermode))
+  ;; ---------------------------------------------
+
+  ;; For racket
+  ;; ---------------------------------------------
+  (define-hostmode poly-racket-org-hostmode
+    :mode 'racket-mode)
+
+  (define-innermode poly-racket-org-innermode
+    :mode 'org-mode
+    :head-matcher (rx "#| " "org")
+    :tail-matcher (rx "|#")
+    :head-mode 'host
+    :tail-mode 'host)
+
+  (define-polymode poly-racket-org-mode
+    :hostmode 'poly-racket-org-hostmode
+    :innermodes '(poly-racket-org-innermode))
+  ;; ---------------------------------------------
+
+  ;; For lilypond
+  (define-hostmode poly-lilypond-org-hostmode
+    :mode 'LilyPond-mode)
+
+  (define-innermode poly-lilypond-org-innermode
+    :mode 'org-mode
+    :head-matcher (rx "%{ " "org")
+    :tail-matcher (rx "%}")
+    :head-mode 'host
+    :tail-mode 'host)
+
+  (define-polymode poly-lilypond-org-mode
+    :hostmode 'poly-lilypond-org-hostmode
+    :innermodes '(poly-lilypond-org-innermode))
+  ;; ---------------------------------------------
+
+  )
+#+end_src
+1. use
+   ~:hook (python-ts-mode . poly-python-org-mode)~
+   instead of
+   ~:mode ("\\.py\\'" . poly-python-org-mode)~
+   as if using 2nd one, if won't work after opening 2nd py file, or same py file the 2nd time after emacs startup
+2. hook only =python-ts-mode= to =poly-python-org-mode=, don't hook =python-mode= to =poly-python-org-mode= [2023-07-18 Tue 14:31]
+3. remove ~:hook~, as this method won't with with lisp-mode, manually M-x poly-lisp-org-mode [2023-07-21 Fri 23:18]
+
+***** explanation
+****** for python
+use following pattern to insert org-mode block in python-mode
+(without ~:tangle no~)
+
+r"""
+#+begin_src python :tangle no
+print("Hello")
+#+end_src
+"""
+
+**** fix return key in polymode
+issues:
+1. return in insert mode not working
+2. rx '**' range error (message)
+
+#+begin_src emacs-lisp
+(general-define-key
+ :states 'insert
+ :keymaps 'polymode-mode-map
+ "<return>" 'newline)
+#+end_src
+
+*** poporg
+#+begin_src emacs-lisp
+(use-package poporg
+  :diminish
+  :commands poporg-edit-thing)
+#+end_src
+
+main commands:
+=jy/poporg= -> my custom function
+=poporg-edit-exit= -> has same keybinding as =save-buffer=
+
+other commands:
+=poporg-dwim=
+=poporg-update=
+=poporg-update-and-save=
+
+** productivity
+*** syntax checking
+**** flycheck
+#+begin_src emacs-lisp
+(use-package flycheck
+  :defer t
+  ;:hook (lsp-mode . flycheck-mode)
+  ;:hook (python-mode . flycheck-mode)
+  :config
+  (setq flycheck-check-syntax-automatically nil))
+#+end_src
+
+**** flymake
+#+begin_src emacs-lisp
+(use-package flymake
+  :straight nil
+  :defer t
+  :config
+  (setq flymake-no-changes-timeout nil
+        flymake-start-on-save-buffer nil))
+#+end_src
+
+*** snippets
+**** yasnippet
+global:
+#+begin_src emacs-lisp
+(use-package yasnippet
+  :defer t
+  :diminish yas-minor-mode
+  :config
+  ;(yas-global-mode 1)
+  (add-hook 'yas-minor-mode-hook (lambda ()
+                                   (yas-activate-extra-mode 'fundamental-mode))))
+#+end_src
+( (add-hook...) add fundamental-mode's snippets to certain major mode
+from video https://www.youtube.com/watch?v=xmBovJvQ3KU)
+
+or use buffer local:
+#+begin_src emacs-lisp :tangle no
+(use-package yasnippet
+  :diminish yas-minor-mode
+  :hook (prog-mode . yas-minor-mode)
+  :config
+  (yas-reload-all))
+#+end_src
+
+**** snippet collection
+#+begin_src emacs-lisp :tangle no
+(use-package yasnippet-snippets)
+#+end_src
+
+this is predefined collection of snippets, currently I don't need it
+
+**** my snippets
+:properties:
+:header-args: :mkdirp yes
+:end:
+
+***** fundamental-mode
+****** date
+#+begin_src conf :tangle (concat jy/lisp-tangle-dir "snippets/fundamental-mode/date")
+# -*- mode: snippet -*-
+# name: date
+# key: /date
+# --
+`(format-time-string "%Y-%m-%d")`
+#+end_src
+
+****** shrug
+#+begin_src conf :tangle (concat jy/lisp-tangle-dir "snippets/fundamental-mode/shrug")
+# -*- mode: snippet -*-
+# name: shrug
+# key: /shrug
+# --
+¯\_(ツ)_/¯
+#+end_src
+
+***** org-mode
+****** property drawer with url
+#+begin_src conf :tangle (concat jy/lisp-tangle-dir "snippets/org-mode/url")
+# -*- mode: snippet -*-
+# name: url
+# key: /url
+# --
+:properties:
+:url: ${}
+:end:
+#+end_src
+
+***** python-mode
+****** examples from online tutorial videos
+******* class
+#+begin_src conf :tangle no
+# -*- mode: snippet -*-
+# name: class(parent)
+# key: class
+# group: Definitions
+# --
+class ${1:ClassName}(${2:object}):
+    """${3:Documentation for $1}
+
+    """
+    def __init__(self${4:, args}):
+        super($1, self).__init__($5)
+        ${4:$(eply-snippet-init-assignments yas-text)}
+        $0
+#+end_src
+
+******* copy right
+#+begin_src conf :tangle no
+# -*- mode: snippet -*-
+# name: copyright
+# key: /cr
+# --
+##############################
+# Author: ${1:Jeb}
+# Filename: `(file-name-nondirectory (buffer-file-name))`
+# Copyright `(format-time-string "%Y")` Jeb of Some
+##############################
+#+end_src
+
+******* test2
+#+begin_src conf :tangle no
+# -*- mode: snippet -*-
+# name: test2
+# key: test2
+# --
+# $1
+${1:$(downcase (replace-regexp-in-string " " "_" yas-text))}
+#+end_src
+
+****** dataclass
+#+begin_src conf :tangle (concat jy/lisp-tangle-dir "snippets/python-mode/dataclass")
+# -*- mode: snippet -*-
+# name: dataclass
+# key: /dc
+# --
+@dataclass(frozen=True)
+class ${1:ClassName}:
+#+end_src
+
+*** rainbow delimiters
+#+begin_src emacs-lisp
+(use-package rainbow-delimiters
+  :hook ((prog-mode . rainbow-delimiters-mode)))
+#+end_src
+
+*** visualizing color code
+**** rainbow-mode
+#+begin_src emacs-lisp
+(use-package rainbow-mode
+  :defer t)
+#+end_src
+
+*** color code by depth
+**** prism
+#+begin_src emacs-lisp :tangle no
+(use-package prism
+  :defer t
+  :config
+  (prism-set-colors :num 16
+    :desaturations (cl-loop for i from 0 below 16
+                            collect (* i 2.5))
+    :lightens (cl-loop for i from 0 below 16
+                       collect (* i 2.5))
+    :colors (list "dodgerblue" "medium sea green" "sandy brown")
+
+    :comments-fn
+    (lambda (color)
+      (prism-blend color
+                   (face-attribute 'font-lock-comment-face :foreground) 0.25))
+
+    :strings-fn
+    (lambda (color)
+      (prism-blend color "white" 0.5))))
+#+end_src
+
+*** helpful
+#+begin_src emacs-lisp
+(use-package helpful
+  :bind
+  ([remap describe-function] . helpful-function)
+  ([remap describe-variable] . helpful-variable)
+  ([remap describe-key] . helpful-key)
+  ([remap describe-command] . helpful-command)
+  ([remap describe-symbol] . helpful-symbol)
+  )
+#+end_src
+
+if used with counsel:
+#+begin_src emacs-lisp :tangle no
+(use-package helpful
+  :custom
+  (counsel-describe-function-function #'helpful-callable)
+  (counsel-describe-variable-function #'helpful-variable)
+  :bind
+  ([remap describe-function] . counsel-describe-function)
+  ([remap describe-symbol] . helpful-symbol)
+  ([remap describe-variable] . counsel-describe-variable)
+  ([remap describe-command] . helpful-command)
+  ([remap describe-key] . helpful-key))
+#+end_src
+
+*** indentation guide line
+**** highlight-indent-guides
+#+begin_src emacs-lisp
+(use-package highlight-indent-guides
+  :diminish highlight-indent-guides-mode
+  :defer t
+  :config
+  ;; Method
+  (setq highlight-indent-guides-method 'character)
+  ;; Customizing faces
+  (set-face-background 'highlight-indent-guides-odd-face "darkgray")
+  (set-face-background 'highlight-indent-guides-even-face "dimgray")
+  (set-face-foreground 'highlight-indent-guides-character-face "dimgray"))
+#+end_src
+
+**** indent-guide
+#+begin_src emacs-lisp :tangle no
+(use-package indent-guide
+  :diminish indent-guide-mode
+  :config
+  (indent-guide-global-mode))
+#+end_src
+
+*** highlight numbers
+**** highlight-numbers
+#+begin_src emacs-lisp
+(use-package highlight-numbers
+  :config
+  (add-hook 'prog-mode-hook 'highlight-numbers-mode))
+#+end_src
+
+*** git gutter
+**** git-gutter
+#+begin_src emacs-lisp
+(use-package git-gutter
+  :defer t
+  :diminish git-gutter-mode
+  ;:init
+  ;(global-git-gutter-mode t)
+)
+#+end_src
+
+*** commenting
+**** evil-nerd-commenter
+#+begin_src emacs-lisp :tangle no
+(use-package evil-nerd-commenter
+  :defer t)
+#+end_src
+
+*** search
+**** ripgrep with wgrep
+***** ripgrep
+deadgrep and rg.el are both frontends for using ripgrep in emacs
+
+****** deadgrep
+#+begin_src emacs-lisp
+(use-package deadgrep
+  :defer t)
+#+end_src
+
+****** rg.el
+#+begin_src emacs-lisp :tangle no
+(use-package rg
+  :defer t)
+#+end_src
+
+***** wgrep
+wgrep allows you to edit a grep buffer and apply those changes to the file buffer like sed interactively.
+#+begin_src emacs-lisp
+(use-package wgrep
+  :defer t)
+#+end_src
+
+use =consult-ripgrep= with =wgrep=
+=consult-ripgrep= -> =embark-act= -> =embark-export= to grep-mode -> =wgrep= for editing of all matches
+
+source:
+https://github.com/minad/consult/issues/489
+https://github.com/minad/consult#embark-integration
+
+**** elgrep
+#+begin_src emacs-lisp :tangle no
+(use-package elgrep
+  :defer t)
+#+end_src
+
+*** workspaces
+**** burly
+#+begin_src emacs-lisp :tangle no
+(use-package burly
+  :defer t)
+#+end_src
+
+**** tab-bar-mode
+#+begin_src emacs-lisp
+(setq tab-bar-new-tab-choice "*scratch*"
+      tab-bar-close-button-show nil
+      tab-bar-new-button-show nil
+      tab-bar-show nil ; Don't turn on tab-bar-mode when tabs are created
+      )
+#+end_src
+
+**** perspective
+#+begin_src emacs-lisp :tangle no
+(use-package perspective
+  :defer t
+  :bind (("C-M-k" . persp-switch)
+         ("C-M-n" . persp-next)
+         ("C-x k" . persp-kill-buffer*))
+  :custom
+  (persp-initial-frame-name "main")
+  :init
+  ;; Suppress persp-mode-prefix-key not set warning
+  (setq persp-suppress-no-prefix-key-warning t)
+  :config
+  ;; Running `persp-mode' multiple times resets the perspective list...
+  (unless (equal persp-mode t)
+    (persp-mode)))
+#+end_src
+
+**** tabspaces
+#+begin_src emacs-lisp :tangle no
+(use-package tabspaces
+  ;; :defer t
+  ;;:hook (after-init . tabspaces-mode) ;; use this only if you want the minor-mode loaded at startup.
+  :commands (tabspaces-switch-or-create-workspace
+             tabspaces-open-or-create-project-and-workspace)
+  :init
+  (setq tabspaces-use-filtered-buffers-as-default nil ; When t, remap switch-to-buffer to tabspaces-switch-to-buffer.
+        tabspaces-default-tab "Default"
+        tabspaces-remove-to-default t
+        tabspaces-include-buffers '("*scratch*")
+        tabspaces-session nil
+        tabspaces-session-auto-restore nil))
+#+end_src
+
+*** bookmarks
+**** dogears
+#+begin_src emacs-lisp :tangle no
+(use-package dogears
+  :defer t
+  :config
+  ;; Persist between sessions
+  (add-to-list 'savehist-additional-variables 'dogears-list))
+#+end_src
+
+persist dogears list between emacs sessions:
+https://github.com/alphapapa/dogears.el/issues/4
+
+*** code folding
+**** origami
+#+begin_src emacs-lisp
+(use-package origami
+  :hook (prog-mode . origami-mode)
+  ;;:config
+  ;;(global-origami-mode 1)
+  )
+#+end_src
+
+**** hs-minor-mode
+#+begin_src emacs-lisp :tangle no
+(add-hook 'prog-mode-hook 'hs-minor-mode)
+#+end_src
+
+*** hide or add comments
+**** obvious.el
+#+begin_src emacs-lisp :tangle no
+(use-package obvious
+  :straight (obvious :type git :host github :repo "alphapapa/obvious.el")
+  :defer t)
+#+end_src
+
+**** doc-show-inline
+#+begin_src emacs-lisp :tangle no
+(use-package doc-show-inline
+  :defer t)
+#+end_src
+
+*** trimming whitespaces
+**** ws-butler
+#+begin_src emacs-lisp
+(use-package ws-butler
+  :diminish ws-butler-mode
+  :hook ((text-mode . ws-butler-mode)
+         (prog-mode . ws-butler-mode)))
+#+end_src
+
+*** indent mode
+**** aggressive-indent-mode
+#+begin_src emacs-lisp
+(use-package aggressive-indent-mode
+  ;;:defer t
+  :hook ((emacs-lisp-mode lisp-mode scheme-mode racket-mode) . aggressive-indent-mode))
+
+(add-hook 'aggressive-indent-mode-hook
+          (lambda ()
+            (diminish 'aggressive-indent-mode)))
+#+end_src
+
+electric-indent-mode should be disabled when using aggressive-indent-mode according to this
+
+https://github.com/Malabarba/aggressive-indent-mode/issues/82
+#+begin_quote
+Yes. Electric indent mode sometimes causes conflicts with aggressive indent. Besides, everything that electric indent offers is already covered by aggressive-indent-mode, so there's no need to use both.
+#+end_quote
+
+but from my own experience, aggressive-indent-mode must work with electric-indent-mode being turned on, otherwise weird indentation behavior will occur (tested in emacs-lisp mode) [2023-07-13 Thu 15:49]
+
+*** sticky header
+**** topsy
+#+begin_src emacs-lisp :tangle no
+(use-package topsy
+  :defer t
+  ;; :hook ((prog-mode . topsy-mode))
+  )
+#+end_src
+
+**** breadcrumb
+#+begin_src emacs-lisp
+(use-package breadcrumb
+  :straight (breadcrumb :type git :host github :repo "joaotavora/breadcrumb")
+  :commands (breadcrumb-mode breadcrumb-local-mode)
+  :config
+  (setq breadcrumb-project-max-length 80
+        breadcrumb-imenu-max-length 80))
+#+end_src
+
+*** jump to definitions
+**** dumb-jump
+#+begin_src emacs-lisp
+(use-package dumb-jump
+  :defer t
+  :init
+  (add-hook 'xref-backend-functions #'dumb-jump-xref-activate))
+
+(setq xref-show-definitions-function #'xref-show-definitions-completing-read)
+#+end_src
+
+Xref can be customized to use completing-read to select a target. That way a completion framework of your choice (Icomplete, Helm, Ivy, ...) will be used instead of the default pop-up buffer. To do this, evaluate
+
+#+begin_src emacs-lisp :tangle no
+(setq xref-show-definitions-function #'xref-show-definitions-completing-read)
+#+end_src
+
+Note that the function xref-show-definitions-completing-read requires at least Xref 1.1.0. This can either be downloaded from ELPA or is bundled with Emacs 28.1 or newer.
+
+*** multiple cursors
+if using evil-mode, only install package evil-mc
+
+**** evil-mc
+#+begin_src emacs-lisp :tangle no
+(use-package evil-mc
+  :diminish
+  :defer t
+  ;;:config
+  ;;(global-evil-mc-mode 1)
+  )
+#+end_src
+
+**** multiple cursors
+#+begin_src emacs-lisp :tangle no
+(use-package multiple-cursors
+  :defer t)
+#+end_src
+
+*** narrowing
+**** fancy-narrow
+#+begin_src emacs-lisp :tangle no
+(use-package fancy-narrow
+  :defer t)
+#+end_src
+
+There were bugs when using fancy-narrow with evil-mode, so disabled this package [2023-01-21 Sat 23:27]
+
+*** diff
+**** dumb-diff
+#+begin_src emacs-lisp
+(use-package dumb-diff
+  :defer t)
+#+end_src
+
+*** imenu-list
+#+begin_src emacs-lisp
+(use-package imenu-list
+  :defer t
+  :config
+  (setq imenu-list-focus-after-activation nil
+        imenu-list-auto-resize nil
+        imenu-list-after-jump-hook '(recenter)
+        imenu-list-position 'right
+        imenu-list-size 0.3))
+#+end_src
+
+** languages
+*** lsp
+**** eglot
+***** eglot
+#+begin_src emacs-lisp
+(if (version< emacs-version "29")
+    (use-package eglot
+      :defer t
+      :config
+      ;; Disable autostarting flymake
+      (add-hook 'eglot--managed-mode-hook (lambda () (flymake-mode -1)))
+      ;; Disable highlighting at point
+      (setq eglot-ignored-server-capabilities '(:documentHighlightProvider)))
+  (use-package eglot
+    :straight nil
+    :defer t
+    :config
+    ;; Disable autostarting flymake
+    (add-hook 'eglot--managed-mode-hook (lambda () (flymake-mode -1)))
+    ;; Disable highlighting at point
+    (setq eglot-ignored-server-capabilities '(:documentHighlightProvider))))
+
+;; Customize how eldoc displays the at-point documentation destination
+(setq eldoc-display-functions '(eldoc-display-in-buffer))
+#+end_src
+
+variable eldoc-display-functions's default value is '(eldoc-display-in-echo-area
+ eldoc-display-in-buffer)
+
+***** temporary fix
+[2022-12-17 Sat 01:33]
+issue:
+eglot--error: [eglot] -32603: Request initialize failed with message: Could not find a valid TypeScript installation. Please ensure that the "typescript" dependency is installed in the workspace or that a valid `tsserver.path` is specified. Exiting.
+
+for my desktop computer:
+currently following packages are installed with home manager
+#+begin_src nix :tangle no
+pkgs.nodejs
+pkgs.nodePackages.typescript-language-server
+pkgs.nodePackages.typescript
+#+end_src
+
+and apply following code to fix this issue: (my own code)
+#+begin_src emacs-lisp :tangle no
+;; ;; Working solution with hard-coded path
+;; (if (string-equal system-name "nix")
+;;     (with-eval-after-load 'eglot
+;;        (add-to-list 'eglot-server-programs
+;;                     '((js-mode typescript-mode) . ("typescript-language-server" "--stdio" "--tsserver-path" "/nix/store/dsjnz3gk4imdpby5s7g71schw1jyf207-typescript-4.8.4/lib/node_modules/typescript/bin/")))))
+
+;; ;; Using let expression didn't work
+;; (if (string-equal system-name "nix")
+;;     (let ((tsserver-path
+;;            (concat
+;;             (replace-regexp-in-string "bin\/tsserver\n" ""
+;;                                       (shell-command-to-string "readlink $(which tsserver)"))
+;;             "lib/node_modules/typescript/bin/")))
+;;       (with-eval-after-load 'eglot
+;;         (add-to-list 'eglot-server-programs
+;;                      `((js-mode typescript-mode) . ("typescript-language-server" "--stdio" "--tsserver-path" ,tsserver-path))))))
+
+;; Final working solution
+(if (string-equal system-name "nix")
+    (progn
+      (setq jy/tsserver-path
+            (concat
+             (replace-regexp-in-string "bin\/tsserver\n" ""
+                                       (shell-command-to-string "readlink $(which tsserver)"))
+             "lib/node_modules/typescript/bin/"))
+      (with-eval-after-load 'eglot
+        (add-to-list 'eglot-server-programs
+                     `((js-mode typescript-mode) . ("typescript-language-server" "--stdio" "--tsserver-path" ,jy/tsserver-path))))))
+#+end_src
+
+better code:
+#+begin_src emacs-lisp
+(if (or (string-equal system-name "nix")
+        (string-equal system-name "nix-laptop"))
+    (with-eval-after-load 'eglot
+      ;; Find the paths to the executables
+      ;; Requires that typescript-language-server and typescript are both installed
+      (let ((path-to-typescript-lib-dir
+             (expand-file-name
+              "../../lib" ; Get to the lib directory
+              (file-truename ; Handle symlinks
+               (executable-find "tsserver")))) ; Find tsserver
+            (path-to-typescript-language-server (executable-find "typescript-language-server")))
+
+        (add-to-list
+         'eglot-server-programs
+         `((js-mode typescript-mode) .
+           (,path-to-typescript-language-server
+            "--stdio"
+            "--tsserver-path"
+            ,path-to-typescript-lib-dir))))))
+#+end_src
+
+source:
+https://github.com/typescript-language-server/typescript-language-server/issues/411
+https://joaotavora.github.io/eglot/#Setting-Up-LSP-Servers
+
+better code source:
+https://vxlabs.com/2022/06/12/typescript-development-with-emacs-tree-sitter-and-lsp-in-2022/
+
+**** lsp-mode
+***** my config
+#+begin_src emacs-lisp :tangle no
+(defun jy/lsp-mode-setup ()
+  (setq lsp-headerline-breadcrumb-segments '(path-up-to-project file symbols))
+  ;(setq lsp-headerline-breadcrumb-segments '(symbols))
+  (setq lsp-headerline-breadcrumb-enable nil)
+  (setq lsp-enable-symbol-highlighting nil))
+
+(use-package lsp-mode
+  :hook
+  ;(python-mode . lsp-deferred)
+  (lsp-mode . jy/lsp-mode-setup)
+  :commands (lsp lsp-deferred)
+  ;:init
+  ;(setq lsp-keymap-prefix "C-c l")
+  :config
+  (lsp-enable-which-key-integration t))
+
+(use-package lsp-ui
+  :hook (lsp-mode . lsp-ui-mode)
+  :custom
+  (lsp-ui-doc-enable nil)
+  (lsp-ui-doc-position 'bottom))
+
+;(use-package lsp-ivy
+;  :commands lsp-ivy-workspace-symbol
+;  :config
+;  (setq lsp-ui-sideline-enable t)
+;  (setq lsp-ui-sideline-show-hover nil)
+;  (setq lsp-ui-doc-position 'bottom)
+;  (lsp-ui-doc-show))
+;
+;(use-package lsp-treemacs
+;  :commands lsp-treemacs-errors-list
+;  :after lsp)
+#+end_src
+
+for python:
+install =python-lsp-server= package in python
+
+***** templates
+#+begin_src emacs-lisp :tangle no
+(use-package ivy-xref
+  :init (if (< emacs-major-version 27)
+            (setq xref-show-xrefs-function #'ivy-xref-show-xrefs)
+          (setq xref-show-definitions-function #'ivy-xref-show-defs)))
+
+(use-package lsp-mode
+  :commands lsp
+  ;;:hook ((typescript-mode js2-mode web-mode) . lsp)
+  :bind (:map lsp-mode-map
+              ("TAB" . completion-at-point)))
+
+(general-define-key
+ :states '(normal visual)
+ :prefix "SPC"
+ "l"  '(:ignore t :which-key "lsp")
+ "ld" 'xref-find-definitions
+ "lr" 'xref-find-references
+ "ln" 'lsp-ui-find-next-reference
+ "lp" 'lsp-ui-find-prev-reference
+ "ls" 'counsel-imenu
+ "le" 'lsp-ui-flycheck-list
+ "lS" 'lsp-ui-sideline-mode
+ "lX" 'lsp-execute-code-action)
+
+(use-package lsp-ui
+  :hook (lsp-mode . lsp-ui-mode)
+  :config
+  (setq lsp-ui-sideline-enable t)
+  (setq lsp-ui-sideline-show-hover nil)
+  (setq lsp-ui-doc-position 'bottom)
+  (lsp-ui-doc-show))
+#+end_src
+
+*** debugging
+**** realgud
+#+begin_src emacs-lisp
+(use-package realgud
+  :defer t)
+
+;; For javascript
+;; (use-package realgud-trepan-ni
+;;   :after realgud)
+#+end_src
+
+***** usage
+****** motion
+| n, F10      | Next (aka “step over”, “step through”) |
+| s, SPC, F11 | Step (aka “step into”)                 |
+| f, S-F11    | Finish (aka “step out”, “return”)      |
+| c, F5       | Continue (run to next break point)     |
+
+****** breakpoints
+| b, F9 | Set breakpoint   |
+| D     | Clear breakpoint |
+
+****** inspecting variables
+| middle mouse | Inspect variable under cursor (in tooltip) |
+| e            | Evaluate expression                        |
+
+****** control
+| q, S-F5 | Quit                 |
+| R, r    | Run (aka “restart”)  |
+| S       | Go to command window |
+
+****** extra commands
+| U    | Until (run to a greater source line)     |
+| u, > | Up stack (move to older stack frame)     |
+| d, < | Down stack (move to younger stack frame) |
+| X    | Clear breakpoint (by line)               |
+| j    | Jump to current line                     |
+| \-   | Disable breakpoint                       |
+| +    | Enable breakpoint                        |
+
+***** conditional breakpoint using pdb
+https://stackoverflow.com/questions/25275410/conditional-breakpoint-using-pdb
+
+***** gdb usage
+1. compile program using -g flag
+   example:
+   gcc -g test.c -o test
+2. =run or r= in gdb to start the program
+3. =b main or break main= to set a breakpoint at main function
+4. =b n= to set a breakpoint at line n
+5. =clear main= to clear the breakpoint at main function
+6. =clear n= to clear the breakpoint at line n
+7. =watch <variable_name>= to watch variables
+8. =print <variable_name>= to print the value of variables
+9. =next or n= next
+10. =step or s= step into
+11. press enter to repeat last command
+12. =continue or c= continue
+13. =list n= print lines from source file
+14. =q= to quit gdb
+
+todo:
+1. learn how to use gdb to debug an interactive c program
+https://stackoverflow.com/questions/42015184/using-gdb-to-debug-a-interactive-program-that-reads-input-from-stdin
+
+**** dap-mode
+#+begin_src emacs-lisp :tangle no
+(use-package dap-mode
+  :custom
+  (lsp-enable-dap-auto-configure nil)
+  :config
+  (dap-ui-mode 1)
+  (dap-tooltip-mode 1))
+#+end_src
+
+for python:
+install =debugpy= and =pytest= package in python
+
+*** tree-sitter
+**** tree-sitter
+#+begin_src emacs-lisp
+(if (version< emacs-version "29")
+    (progn
+      (when (window-system) ; Disable for termux
+        (use-package tree-sitter
+          :diminish tree-sitter-mode
+          ;;:hook ((python-mode js2-mode typescript-mode) . tree-sitter-mode)
+          :config
+          (global-tree-sitter-mode)
+          (add-hook 'tree-sitter-after-on-hook #'tree-sitter-hl-mode))
+        (use-package tree-sitter-langs
+          :after tree-sitter-mode)))
+  (progn
+    (use-package treesit
+      :straight nil
+      :diminish tree-sitter-mode
+      :config
+      (setq treesit-extra-load-path `(,(concat user-emacs-directory "tree-sitter/"))))
+    (use-package treesit-auto
+      :demand t
+      :config
+      (setq treesit-auto-install t)
+      (global-treesit-auto-mode))))
+
+
+(defun jy/treesit-auto-install-all ()
+  "Install every available, maintained grammar.
+
+See `treesit-auto-langs' and `treesit-auto-install' for
+how to modify the behavior of this function."
+  (interactive)
+  (when-let* ((treesit-language-source-alist (treesit-auto--build-treesit-source-alist))
+              (to-install (or treesit-auto-langs
+                              (seq-filter
+                               (lambda (lang) (not (treesit-ready-p lang t)))
+                               (cl-set-difference
+                                (mapcar 'car treesit-language-source-alist)
+                                treesit-auto-opt-out-list)))))
+    (when (or (eq treesit-auto-install t) ; Quiet mode is off
+              (y-or-n-p "Install missing grammars? "))
+      (if (version<= "30" emacs-version)
+          ;; For emacs version 30
+          (mapcar (lambda (lang) (treesit-install-language-grammar lang (concat user-emacs-directory "tree-sitter")))
+                  to-install)
+        ;; For emacs version 29 (29.0.92 as of modifiying this function)
+        (mapcar (lambda (lang) (treesit-install-language-grammar lang))
+                to-install)
+        ))))
+#+end_src
+
+- for emacs >= 29, use =treesit-auto-install-all= to install all available grammars
+   - to fix issues, use =jy/treesit-auto-install-all= to install all grammars
+- use =treesit-ready-p 'lang= to check for specific language
+
+1. Didn't find a way to appropriately defer those packages [2022-07-10 Sun 01:58]
+2. If using built-in treesit package, package tree-sitter-langs needs to be defined before treesit [2023-03-16 Thu 15:44]
+3. if using built-in treesit package, use treesit-auto instead [2023-04-13 Thu 15:21]
+
+treesit-auto caveats:
+This package is, admittedly, a hack. treesit.el provides an excellent foundation to incremental source code parsing for Emacs 29, and over time that foundation will expand into an improved core editing experience. With that in mind, I fully expect this package to eventually be obsolesced by the default options in Emacs 30 and beyond. That does not preclude us from adding a few quality of life improvements to Emacs 29, though, and so it still seems prudent to have this plugin available in the meantime.
+
+**** combobulate
+#+begin_src emacs-lisp
+(if (version<= "29" emacs-version)
+    (use-package combobulate
+      :diminish combobulate-mode
+      :straight (combobulate :type git :host github :repo "mickeynp/combobulate")
+      :hook ((python-ts-mode . combobulate-mode)
+             (js-ts-mode . combobulate-mode)
+             (typescript-ts-mode . combobulate-mode)
+             (tsx-ts-mode . combobulate-mode)
+             (css-ts-mode . combobulate-mode))))
+#+end_src
+
+***** default keybindings
+Default keybindings:
+M-x =describe-keymap= RET =combobulate-key-map=
+
+for example in python-ts-mode:
+
+M-<down>		combobulate-splice-down
+M-<left>		combobulate-yeet-forward
+M-<right>		combobulate-yoink-forward
+M-<up>			combobulate-splice-up
+
+C-M-a			combobulate-navigate-beginning-of-defun
+C-M-d			combobulate-navigate-down-list-maybe
+C-M-e			combobulate-navigate-end-of-defun
+C-M-h			combobulate-mark-defun
+C-M-n			combobulate-navigate-next
+C-M-p			combobulate-navigate-previous
+C-M-t			combobulate-transpose-sexps
+C-M-u			combobulate-navigate-up-list-maybe
+M-(				combobulate-envelop-python-ts-mode-wrap-parentheses
+M-N				combobulate-drag-down
+M-P				combobulate-drag-up
+M-a				combobulate-navigate-logical-previous
+M-e				combobulate-navigate-logical-next
+M-h				combobulate-mark-node-dwim
+M-k				combobulate-kill-node-dwim
+
+C-c o c			combobulate-clone-node-dwim
+C-c o j			combobulate-avy-jump
+C-c o o			combobulate
+C-c o t			combobulate-edit-cluster-dwim
+C-c o v			combobulate-vanish-node
+
+**** archive
+***** tree-edit
+#+begin_src emacs-lisp :tangle no
+(use-package tree-edit
+  :defer t)
+
+(use-package evil-tree-edit
+  :defer t
+  :diminish)
+#+end_src
+
+****** activate
+To activate tree-edit from normal state, press Q, and to return to normal state press ESC.
+
+****** navigation
+1. Next  j  Move cursor to the next sibling.
+2. Previous  k  Move cursor to the previous sibling.
+3. Inwards  f  Move cursor to the first child.
+4. Outwards  h  Move cursor to the parent.
+5. Jump to  s  Avy jump to a node of node-type for a node inside the current.
+6. Outwards Significant  A  Move outwards until a significant node (e.g. function or class declaration) is hit.
+7. Goto Placeholder  n  Jump to the first placeholder node within the current.
+
+****** editing
+1. Raise  r  Replace the current node’s parent with the current node.
+2. Delete  d  Delete the current node.
+3. Move  m  Copy then delete the current node.
+4. Change  c  Delete the current node and drop into insert state. Tree state will be re-entered on ESC.
+5. Wrap  w  Create a new node of node-type and insert the current one in it.
+6. Exchange  e  Exchange the current node with a new node of node-type.
+7. Insert  i  Insert a new node of node-type to the right of the current.
+8. Append  a  Insert a new node of node-type to the left of the current.
+9. Insert Child  I  Insert a new node of node-type as a child of the current. Useful for nodes with no named children, i.e. {}
+10. Goto Placeholder and Change  N  Jump to the first placeholder node within the current and edit it.
+11. Append Placeholder and Change  x  Add a placeholder node and then immediately edit it.
+12. Slurp  >  Grow the current node to contain the nearest right-most element.
+13. Barf  <  Shrink the current node to place it’s left-most element into the parent node.
+14. Copy  y  Copy the text of the current node.
+15. Undo  u  Undo the last operation.
+16. Preview  ?  Preview the possible variations of the current node.
+17. Tree view  v  Enable tree-edit-view or display if already enabled.
+
+***** ts-fold
+#+begin_src emacs-lisp :tangle no
+(use-package ts-fold
+  :straight (ts-fold :type git :host github :repo "emacs-tree-sitter/ts-fold")
+  :defer t)
+#+end_src
+
+*** lisp structure editing
+**** lispy
+#+begin_src emacs-lisp
+(use-package lispy
+  ;; :defer t
+  :demand t
+  :diminish lispy-mode
+  ;; :hook ((emacs-lisp-mode . lispy-mode)
+  ;;       (scheme-mode . lispy-mode)
+  ;;       (lisp-mode . lispy-mode)
+  ;;       (racket-mode . lispy-mode))
+  )
+
+;; Evil keybindings for lispy
+(use-package lispyville
+  ;; :defer t
+  :demand t
+  :diminish lispyville-mode
+  ;; :hook ((lispy-mode . lispyville-mode)
+  ;;        (emacs-lisp-mode . lispyville-mode)
+  ;;        (scheme-mode . lispy-mode)
+  ;;        (lisp-mode . lispy-mode)
+  ;;        (racket-mode . lispy-mode))
+  :config
+  (lispyville-set-key-theme '(operators c-w additional
+                                        additional-movement slurp/barf-cp
+                                        prettify)))
+#+end_src
+
+***** lispy dependencies
+ivy
+counsel
+ace-window
+
+***** issue
+****** evil-open-below producing additional letter 'o'
+to avoid evil-open-below producing additional letter 'o' after entering insert state in source blocks with modes hooked to lispy-mode when using lispy
+#+begin_src emacs-lisp :tangle no
+(setq org-src-tab-acts-natively nil)
+#+end_src
+
+or comment out
+#+begin_src emacs-lisp :tangle no
+:hook ((emacs-lisp-mode . lispy-mode)
+       (scheme-mode . lispy-mode)
+       (lisp-mode . lispy-mode)
+       (racket-mode . lispy-mode))
+#+end_src
+in lispy
+
+instead add those hooks to lispyville (some basic lispyville functions work without lispy)
+---------------------------------------
+[2023-01-16 Mon 19:04]
+current solution:
+set =org-src-tab-acts-natively= to =t=, don't enable lispy-mode by default, use custom functions to use lipsy, and set =evil-auto-indent= to =t=
+
+**** archive
+***** paredit
+#+begin_src emacs-lisp :tangle no
+(use-package paredit
+  :diminish paredit-mode
+  :hook ((emacs-lisp-mode . paredit-mode)
+         (eval-expression-minibuffer-setup . paredit-mode)
+         ;(ielm-mode . paredit-mode)
+         (lisp-mode . paredit-mode)
+         (lisp-interaction-mode . paredit-mode)
+         (scheme-mode . paredit-mode)
+         (racket-mode . paredit-mode)
+         ;; (prog-mode . paredit-mode)
+         )
+  :config
+  (general-define-key
+   :states '(visual)
+   :keymaps 'paredit-mode-map
+   "x" 'evil-delete-char)
+  )
+
+(use-package evil-paredit
+  :hook (paredit-mode . evil-paredit-mode))
+#+end_src
+
+***** smartparens
+#+begin_src emacs-lisp :tangle no
+(use-package smartparens
+  ;; :defer t
+  :diminish smartparens-mode
+  ;; :hook (python-mode . smartparens-mode)
+
+  :config
+  ;; Global mode
+  (smartparens-global-mode 1)
+  ;; Disable certain pairs
+  (sp-pair "'" nil :actions :rem) ; disable '' pairs
+  ;; Disable smartparens for some modes
+  ;; (add-hook 'lisp-mode-hook #'turn-off-smartparens-mode)
+  ;; (add-hook 'emacs-lisp-mode-hook #'turn-off-smartparens-mode)
+  ;; (add-hook 'racket-mode-hook #'turn-off-smartparens-mode)
+  ;; (add-hook 'scheme-mode-hook #'turn-off-smartparens-mode)
+  )
+#+end_src
+
+***** parinfer
+#+begin_src emacs-lisp :tangle no
+(use-package parinfer
+  :diminish parinfer-mode
+  :hook ((clojure-mode . parinfer-mode)
+         (emacs-lisp-mode . parinfer-mode)
+         (common-lisp-mode . parinfer-mode)
+         (scheme-mode . parinfer-mode)
+         (lisp-mode . parinfer-mode))
+  :config
+  (setq parinfer-extensions
+        '(defaults       ; should be included.
+           pretty-parens  ; different paren styles for different modes.
+           evil           ; If you use Evil.
+           smart-tab      ; C-b & C-f jump positions and smart shift with tab & S-tab.
+           smart-yank)))  ; Yank behavior depend on mode.
+#+end_src
+
+***** symex
+#+begin_src emacs-lisp :tangle no
+(use-package symex
+  :config
+  (symex-initialize)
+  (global-set-key (kbd "s-;") 'symex-mode-interface))  ; or whatever keybinding you like
+#+end_src
+
+***** puni
+#+begin_src emacs-lisp :tangle no
+(use-package puni
+  :init
+  (puni-global-mode)
+  (add-hook 'term-mode-hook #'puni-disable-puni-mode)
+  (add-hook 'emacs-lisp-mode-hook #'puni-disable-puni-mode)
+  (add-hook 'scheme-mode-hook #'puni-disable-puni-mode)
+  (add-hook 'lisp-mode-hook #'puni-disable-puni-mode)
+  (add-hook 'racket-mode-hook #'puni-disable-puni-mode))
+#+end_src
+
+****** basic keybindings
+deletion commands:
+| command                   | default keybinding |
+|---------------------------+--------------------|
+| puni-forward-delete-char  | C-d                |
+| puni-backward-delete-char | DEL                |
+| puni-forward-kill-word    | M-d                |
+| puni-backward-kill-word   | M-DEL              |
+| puni-kill-line            | C-k                |
+| puni-backward-kill-line   | C-S-k              |
+
+navigation commands:
+| command                | default keybinding |
+|------------------------+--------------------|
+| puni-forward-sexp      | C-M-f              |
+| puni-backward-sexp     | C-M-b              |
+| puni-beginning-of-sexp | C-M-a              |
+| puni-end-of-sexp       | C-M-e              |
+
+**** lisp structure editing tutorial
+***** source
+https://calva.io/paredit/
+
+***** slurp and barf
+original:
+#+begin_src emacs-lisp :tangle no
+(let [s [1 2 3 4 5]]
+  (->> s)
+  (map (partial * (apply + [1 2 3])))
+  (repeat 4)
+  (zipmap (range 4)))
+#+end_src
+
+slurp =(->> s)='s closing paren:
+#+begin_src emacs-lisp :tangle no
+(let [s [1 2 3 4 5]]
+  (->> s
+       (map (partial * (apply + [1 2 3]))))
+  (repeat 4)
+  (zipmap (range 4)))
+#+end_src
+
+barf =(->> s)='s closing paren:
+#+begin_src emacs-lisp :tangle no
+(let [s [1 2 3 4 5]]
+  (->>) s
+  (map (partial * (apply + [1 2 3])))
+  (repeat 4)
+  (zipmap (range 4)))
+#+end_src
+
+slurp =(->> s)='s opening paren:
+#+begin_src emacs-lisp :tangle no
+(let [s [1 2 3 4 5]]
+  ->> (s)
+  (map (partial * (apply + [1 2 3])))
+  (repeat 4)
+  (zipmap (range 4)))
+#+end_src
+
+barf =(->> s)='s opening paren:
+#+begin_src emacs-lisp :tangle no
+(let ([s [1 2 3 4 5]]
+      ->> s)
+  (map (partial * (apply + [1 2 3])))
+  (repeat 4)
+  (zipmap (range 4)))
+#+end_src
+
+***** splice and split
+original:
+#+begin_src emacs-lisp :tangle no
+(let [s [1 2 3 4 5]]
+  (->> s)
+  (map (partial * (apply + [1 2 3])))
+  (repeat 4)
+  (zipmap (range 4)))
+#+end_src
+
+splice (remove enclosing parens) =(repeat 4)=:
+#+begin_src emacs-lisp :tangle no
+(let [s [1 2 3 4 5]]
+  (->> s)
+  (map (partial * (apply + [1 2 3])))
+  repeat 4
+  (zipmap (range 4)))
+#+end_src
+
+split in the middle of =(repeat 4)=:
+#+begin_src emacs-lisp :tangle no
+(let [s [1 2 3 4 5]]
+  (->> s)
+  (map (partial * (apply + [1 2 3])))
+  (repeat) (4)
+  (zipmap (range 4)))
+#+end_src
+
+***** raise
+original:
+#+begin_src emacs-lisp :tangle no
+(let [s [1 2 3 4 5]]
+  (->> s)
+  (map (partial * (apply + [1 2 3])))
+  (repeat 4)
+  (zipmap (range 4)))
+#+end_src
+
+raise =(apply + [1 2 3])= once:
+#+begin_src emacs-lisp :tangle no
+(let [s [1 2 3 4 5]]
+  (->> s)
+  (map (apply + [1 2 3]))
+  (repeat 4)
+  (zipmap (range 4)))
+#+end_src
+
+***** transpose
+original:
+#+begin_src emacs-lisp :tangle no
+(let [s [1 2 3 4 5]]
+  (->> s)
+  (map (partial * (apply + [1 2 3])))
+  (repeat 4)
+  (zipmap (range 4)))
+#+end_src
+
+transpose =map= with =(partical * (apply + [1 2 3]))=:
+#+begin_src emacs-lisp :tangle no
+(let [s [1 2 3 4 5]]
+  (->> s)
+  ((partial * (apply + [1 2 3])) map)
+  (repeat 4)
+  (zipmap (range 4)))
+#+end_src
+
+***** convolute
+with lispy use =lispy-convolute=
+
+usage:
+
+https://old.reddit.com/r/emacs/comments/owr2fx/the_power_of_convoluting_lispy/
+
+Okay, I have to demonstrate something cool. Lispy has a convolute command, and it's hard to describe what it does in words, but it's easy to show it. The problem is that it's not easy to explain when the command is needed, so it's hard to make the case for why it's useful.
+
+But now I have an example: while writing a macro, I have a cl-labels form wrapping a let* form, and I realize that the labels form needs to be inside the let* form. Fixing that manually would require a lot of killing and yanking text. But the convolute command does that for me in a single keypress. Here's the macro before convoluting:
+
+#+begin_src lisp :tangle no
+(defmacro ement-with-progress-reporter (reporter-args &rest body)
+  (declare (indent defun))
+  (pcase-let* ((reporter-sym (gensym))
+               (progress-value-sym (gensym))
+               (`(,_message ,_min-value ,max-value) reporter-args))
+    `(cl-labels ((ement-progress-update (&optional (value (cl-incf ,progress-value-sym)))
+                                        (progress-reporter-update ,reporter-sym value)))
+       (let* ((,progress-value-sym ,(or max-value 0))
+              (,reporter-sym (apply #'make-progress-reporter ',reporter-args)))
+         ,@body))))
+#+end_src
+
+The byte-compiler alerted me to the fact that the progress-value-sym symbol should be bound around the cl-labels function. So all I have to do is mark the text ,@body, then press C to convolute, and I get this:
+
+#+begin_src lisp :tangle no
+(defmacro ement-with-progress-reporter (reporter-args &rest body)
+  (declare (indent defun))
+  (pcase-let* ((reporter-sym (gensym))
+               (progress-value-sym (gensym))
+               (`(,_message ,_min-value ,max-value) reporter-args))
+    `(let* ((,progress-value-sym ,(or max-value 0))
+            (,reporter-sym (apply #'make-progress-reporter ',reporter-args)))
+       (cl-labels ((ement-progress-update (&optional (value (cl-incf ,progress-value-sym)))
+                                          (progress-reporter-update ,reporter-sym value)))
+         ,@body))))
+#+end_src
+
+The let* form's bindings are in the proper place, and the cl-labels form's definitions are as well. It's like magic. (And this is another example of the power of parens, why they're a strength rather than a weakness.)
+
+reply from abo-abo:
+
+I use convolute with let statements quite often as well. In fact, C works so well with let statements that a whole bind-variable workflow is based re-using it:
+
+xb to bind variable
+M-m to mark the variable symbol (and finish naming it at the same time)
+C to raise the let-binding up once
+keep doing hC to raise the let-binding up as far as you'd like
+Here's another common use case for C:
+
+#+begin_src lisp :tangle no
+(if (predicate)
+    (push |(long-computation-1) my-list)
+  (push (long-computation-2) my-list))
+#+end_src
+
+I often end up with these kind of statements because I write the first part before I notice that the second has the same structure. No problem, after C:
+
+#+begin_src lisp :tangle no
+(push (if (predicate)
+          |(long-computation-1)
+        (push (long-computation-2) my-list)) my-list)
+#+end_src
+
+Then it's just a quick jfr to clean it up:
+
+#+begin_src lisp :tangle no
+(push (if (predicate)
+          (long-computation-1)
+        |(long-computation-2)) my-list)
+#+end_src
+
+*** auto format
+#+begin_src emacs-lisp
+(use-package format-all
+  :commands (format-all-region-or-buffer format-all-region format-all-buffer))
+#+end_src
+
+commands:
+1. =format-all-buffer=
+2. =format-all-region=
+3. =format-all-region-or-buffer=
+
+*** language modes
+**** built-in language modes
+Emacs has programming language modes for Lisp, Scheme, the Scheme-based DSSSL expression language, Ada, ASM, AWK, C, C++, Fortran, Icon, IDL (CORBA), IDLWAVE, Java, Javascript, M4, Makefiles, Metafont (TeX’s companion for font creation), Modula2, Object Pascal, Objective-C, Octave, Pascal, Perl, Pike, PostScript, Prolog, Python, Ruby, Simula, SQL, Tcl, Verilog, and VHDL. An alternative mode for Perl is called CPerl mode.
+
+**** lisp
+***** common lisp
+****** slime
+#+begin_src emacs-lisp
+(use-package slime
+  :defer t
+  :diminish slime-mode
+  :diminish slime-autodoc-mode
+  :config
+  (setq inferior-lisp-program "sbcl"))
+#+end_src
+
+currently using slime to avoid sly's ui in mode-line [2023-08-02 Wed 15:34]
+
+****** sly
+******* sly
+#+begin_src emacs-lisp :tangle no
+(use-package sly
+  :defer t
+  :config
+  (setq inferior-lisp-program "sbcl"))
+#+end_src
+
+******* sly-quicklisp
+#+begin_src emacs-lisp :tangle no
+(use-package sly-quicklisp
+  :after sly)
+#+end_src
+
+***** scheme
+****** geiser
+#+begin_src emacs-lisp :tangle no
+(use-package geiser-racket
+  :commands (geiser run-geiser))
+#+end_src
+
+***** racket
+****** racket-mode
+#+begin_src emacs-lisp
+(use-package racket-mode
+  :defer t
+  :mode "\\.rkt\\'")
+#+end_src
+
+****** org-babel racket
+#+begin_src emacs-lisp :tangle no
+(use-package ob-racket
+  :after org
+  :config
+  (add-hook 'ob-racket-pre-runtime-library-load-hook
+	      #'ob-racket-raco-make-runtime-library)
+  :straight (ob-racket
+	       :type git :host github :repo "hasu/emacs-ob-racket"
+	       :files ("*.el" "*.rkt")))
+#+end_src
+
+add (racket . t) in org-babel config, make sure load above code first, then org-babel config
+
+***** clojure
+#+begin_src emacs-lisp :tangle no
+(use-package clojure-mode
+  :mode "\\.clj[sc]?\\'")
+
+(use-package cider
+  :defer t
+  ;;:mode "\\.clj[sc]?\\'"
+  :config
+  (evil-collection-cider-setup))
+#+end_src
+
+leiningen usage:
+1. =lein new app test= -> create a project directory called "test"
+2. =lein run= or =lein run test.clj= to run
+
+cider usage:
+1. open a clj file
+2. M-x =cider-jack-in=
+3. M-x =cider-eval-last-sexp=
+
+**** python
+***** built-in python.el
+#+begin_src emacs-lisp
+(setq python-shell-interpreter jy/python-shell-interpreter
+      org-babel-python-command jy/org-babel-python-command)
+#+end_src
+
+***** python-mode.el
+This is the third-party python-mode.el, emacs has a built-in python.el
+
+#+begin_src emacs-lisp :tangle no
+(use-package python-mode
+  :mode "\\.py\\'"
+  ;:hook (python-mode . lsp-deferred)
+  :custom
+  (python-shell-interpreter jy/python-shell-interpreter)
+  (org-babel-python-command jy/org-babel-python-command)
+  ;(dap-python-executable jy/dap-python-executable)
+  ;(dap-python-debugger 'debugpy)
+  ;:config
+  ;(require 'dap-python)
+)
+#+end_src
+
+***** eply
+#+begin_src emacs-lisp :tangle no
+(use-package elpy
+  :defer t
+  :hook ((elpy-mode . flycheck-mode))
+  :init
+  (elpy-enable)
+  :config
+  ;; use flycheck instead of flymake
+  (setq elpy-modules (delq 'elpy-module-flymake elpy-modules))
+  ;; disable eply's vertial guide line
+  (add-hook 'elpy-mode-hook (lambda () (highlight-indentation-mode -1))))
+#+end_src
+
+https://realpython.com/emacs-the-best-python-editor/#alternatives
+
+https://medium.com/analytics-vidhya/managing-a-python-development-environment-in-emacs-43897fd48c6a
+
+***** notes
+****** org support
+from org release 9.6:
+#+begin_quote
+Important announcements and breaking changes
+
+python-mode.el (MELPA) support in ob-python.el is deprecated
+We no longer aim to support third-party python-mode.el implementation of Python REPL. Only the built-in python.el will be supported from now on.
+
+We still keep the old, partially broken, code in ob-python.el for the time being. It will be removed in the next release.
+
+See https://orgmode.org/list/87r0yk7bx8.fsf@localhost for more details.
+#+end_quote
+
+****** difference between built-in python.el and python-mode.el
+https://old.reddit.com/r/emacs/comments/sshhdi/difference_between_inbuild_python_and_pythonmode/
+
+#+begin_quote
+Yes, this is confusing. python.el (which implements python-mode, sigh) was created by Emacs users for python. The separate package python-mode.el also implements its own python-mode, but was written and is maintained by people connected to the python project. The former is shipped with Emacs. The latter includes a bunch of custom python modules to aid with completion and other things, which it does by interrogating a live python process (python.el also does this, but to a lesser extent).
+
+To add yet more, there is elpy.el, which is a package that sits on top of python.el and adds lots of other features, like (Jedi-based) refactoring/renaming, syntax checking, venv support, etc.
+
+But if you are using lsp-mode, most of the in-buffer "code awareness/actions" like completion, docstring, renaming and code lookup, etc. will come from the lsp server. So in that case, the differences I expect will not be that great, and come down to fontification, key bindings, code manipulation, navigation conveniences, and that type of thing.
+#+end_quote
+
+#+begin_quote
+Sigh, yeah, the history around it is even more complex...
+
+The present python mode that ships with Emacs is a wholesale, more or less, replacement for the old one that used to ship with Emacs. The original was written by Dave Love, if I recall correctly. Both are annoyingly named python.el
+
+The python-mode.el that OP refers to is indeed one by people associated with the python project.
+
+One common difference -- back in the day anyway -- was that python-mode.el did a rather poor job of behaving like a proper Emacs major mode. Dumb things like not supporting kill-sexp & friends on triple-quoted docstrings, among other grievances. It did have a lot more features, in theory, but none of them worked well.
+
+Dave Love's old mode behaved like an Emacs mode should, but had fewer overall features, and a couple of weird remnants from a bygone era, like support for "bicycle repair man", a refactoring tool that never really worked very well either.
+
+The "new" mode that ships with Emacs is -- today -- pretty good. It wasn't in the beginning, and why nobody bothered to extend the existing one, and instead giving it the heave-ho I'll never understand. But meh, I digress. I lugged around the old one for about 5-6 years before I finally switched to the default one. I recommend OP stick to the built-in one, enable tree-sitter in it + lsp/eglot and not worry :)
+#+end_quote
+
+#+begin_quote
+If you use LSP, they will be pretty similar, for the stuff lsp-mode isn't already delivering. C-h f python-mode, click on the file name and you'll see whether it's in elpa or the distributed packages.
+#+end_quote
+
+**** c
+***** language server
+#+begin_src emacs-lisp :tangle no
+(use-package ccls
+  :defer t)
+#+end_src
+
+ccls dependencies:
+lsp-mode
+
+**** web
+***** html
+****** web-mode
+#+begin_src emacs-lisp
+(use-package web-mode
+  ;; :defer t
+  ;; :mode "(\\.\\(html?\\|ejs\\|tsx\\|jsx\\)\\'" ; This method of multiple extensions is not working
+  :mode ("\\.html?\\'" "\\.css\\'" "\\.php\\'")
+  :config
+  (setq web-mode-code-indent-offset 2
+        web-mode-markup-indent-offset 2
+        web-mode-attribute-indent-offset 2
+        web-mode-css-indent-offset 2))
+#+end_src
+
+****** live local server
+#+begin_src emacs-lisp
+(use-package impatient-mode
+  :diminish
+  :defer t)
+#+end_src
+
+how to use impatient mode:
+1. start the server with 'httpd-start'
+2. use 'impatient-mode' on any buffer
+3. goto http://localhost:8080/imp/
+
+****** emmet-mode
+#+begin_src emacs-lisp
+(use-package emmet-mode
+  :defer t
+  :diminish
+  :init
+  (add-hook 'sgml-mode-hook 'emmet-mode) ;; Auto-start on any markup modes
+  (add-hook 'css-mode-hook  'emmet-mode) ;; enable Emmet's css abbreviation.
+  :config
+  (setq emmet-self-closing-tag-style ""
+        emmet-move-cursor-after-expanding t
+        emmet-move-cursor-between-quotes t)
+
+  ;; Customize snippets
+  (puthash "in" "<input type=\"\" id=\"\" name=\"\">" emmet-tag-snippets-table)
+  (puthash "img" "<img src=\"\" alt=\"\">" emmet-tag-snippets-table)
+  (puthash "ht" "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Document</title>\n  </head>\n  <body></body>\n</html>\n" emmet-tag-snippets-table)
+
+  )
+#+end_src
+
+e.g.
+~php~ -> ~<?php ?>~
+#+begin_src emacs-lisp :tangle no
+(puthash "pp" "<?php ?>" emmet-tag-snippets-table)
+#+end_src
+
+source:
+https://stackoverflow.com/questions/19073674/how-can-i-add-my-personal-abbreviation-to-emmet-mode-in-emacs
+
+****** archive
+#+begin_src emacs-lisp :tangle no
+(use-package skewer-mode
+  :diminish
+  :defer t)
+
+;; For reference
+(use-package know-your-http-well
+  :defer t)
+#+end_src
+
+***** javascript
+****** javascript
+#+begin_src emacs-lisp
+(use-package js2-mode
+  ;;:defer t
+  :mode "\\.jsx?\\'"
+  :config
+  ;; Use js2-mode for Node scripts
+  ;;(add-to-list 'magic-mode-alist '("#!/usr/bin/env node" . js2-mode))
+  ;; Don't use built-in syntax checking
+  (setq js2-mode-show-strict-warnings nil))
+
+(use-package typescript-mode
+  ;;:defer t
+  :mode "\\.ts\\'"
+  :config
+  (setq typescript-indent-level 2))
+
+(defun jy/node-repl ()
+  (interactive)
+  (setenv "NODE_NO_READLINE" "1") ; Avoid fancy terminal codes
+  (pop-to-buffer (make-comint "node-repl" "node" nil "--interactive")))
+#+end_src
+
+function =jy/node-repl= source:
+https://www.emacswiki.org/emacs/NodeJs
+
+****** archive
+#+begin_src emacs-lisp :tangle no
+;; Javascript development environment
+(use-package indium
+  :defer t)
+;; Indium needs to communicate with a small server for evaluation and debugging.
+;; Install the server with the following command
+;; npm install -g indium
+
+;; Typescript development environment
+(use-package tide
+  :defer t)
+
+(use-package apheleia
+  :defer t
+  ;;:config
+  ;;(apheleia-global-mode +1)
+  )
+
+(use-package prettier-js
+  :defer t
+  ;;:hook ((js2-mode . prettier-js-mode)
+  ;;       (typescript-mode . prettier-js-mode))
+  :config
+  (setq prettier-js-show-errors nil))
+#+end_src
+
+***** php
+#+begin_src emacs-lisp :tangle no
+(use-package php-mode
+  :mode "\\.php\\'")
+#+end_src
+
+**** languages
+***** list 1
+****** haskell
+#+begin_src emacs-lisp :tangle no
+(use-package haskell-mode
+  :mode "\\.hs\\'")
+#+end_src
+
+****** rust
+#+begin_src emacs-lisp :tangle no
+(use-package rust-mode
+  :mode "\\.rs\\'")
+#+end_src
+
+****** go
+#+begin_src emacs-lisp :tangle no
+(use-package go-mode
+  :mode "\\.go\\'")
+#+end_src
+
+****** kotlin
+#+begin_src emacs-lisp :tangle no
+(use-package kotlin-mode
+  :mode "\\.kt\\'")
+#+end_src
+
+***** list 2
+****** cobol-mode
+#+begin_src emacs-lisp :tangle no
+(use-package cobol-mode
+  :mode "\\.cbl\\'")
+#+end_src
+
+****** smalltalk-mode
+#+begin_src emacs-lisp :tangle no
+(use-package smalltalk-mode
+  :mode "\\.st\\'")
+#+end_src
+
+****** apl-mode
+#+begin_src emacs-lisp :tangle no
+(use-package gnu-apl-mode
+  :defer t)
+#+end_src
+
+****** d-mode
+#+begin_src emacs-lisp :tangle no
+(use-package d-mode
+  :mode "\\.d\\'")
+#+end_src
+
+***** list 3
+****** r
+#+begin_src emacs-lisp :tangle no
+(use-package ess
+  :mode "\\.r\\'")
+#+end_src
+
+****** scala
+#+begin_src emacs-lisp :tangle no
+(use-package scala-mode
+  :mode "\\.sc\\'")
+#+end_src
+
+****** julia
+#+begin_src emacs-lisp :tangle no
+(use-package julia-mode
+  :mode "\\.jl\\'")
+#+end_src
+
+****** elixir
+#+begin_src emacs-lisp :tangle no
+(use-package elixir-mode
+  :mode "\\.ex\\'")
+#+end_src
+
+****** ocaml
+#+begin_src emacs-lisp :tangle no
+(use-package tuareg
+  :mode "\\.ml\\'")
+#+end_src
+
+**** for config
+***** lua
+#+begin_src emacs-lisp
+(use-package lua-mode
+  :mode "\\.lua\\'")
+#+end_src
+
+***** nix
+use-package
+#+begin_src emacs-lisp
+(use-package nix-mode
+  :mode "\\.nix\\'")
+#+end_src
+
+***** json
+Keep both json-mode and jsonian-mode installed [2022-11-18 Fri 21:18]
+
+****** json-mode
+#+begin_src emacs-lisp
+(use-package json-mode
+  :defer t
+  ;; :mode "\\.json\\'"
+  )
+#+end_src
+
+****** jsonian-mode
+#+begin_src emacs-lisp
+(use-package jsonian
+  :mode ("\\.json\\'" . jsonian-mode))
+#+end_src
+
+***** kmonad
+****** kbd-mode.el
+#+begin_src emacs-lisp
+(use-package kbd-mode
+  :straight (kbd-mode :type git :host github :repo "kmonad/kbd-mode")
+  :defer t)
+#+end_src
+
+****** archive
+******* manually tangle files and load them
+******** config
+********* with use-package
+#+begin_src emacs-lisp :tangle no
+(use-package kbd-mode
+  :straight nil
+  :load-path "~/.emacs.d/lisp/kmonad")
+#+end_src
+
+********* old way
+#+begin_src emacs-lisp :tangle no
+(add-to-list 'load-path "~/.emacs.d/lisp/kmonad")
+(autoload 'kbd-mode "kbd-mode")
+#+end_src
+
+=(autoload 'kbd-mode "kbd-mode")= is equivalent to =(require 'kbd-mode)= with lazy loading
+
+******** kbd-mode.el
+source:
+https://github.com/kmonad/kbd-mode/blob/master/kbd-mode.el
+
+commit 6b86826 on Feb 4, 2022
+
+#+begin_src emacs-lisp :tangle (concat jy/lisp-tangle-dir "lisp/kmonad/kbd-mode.el") :tangle no
+;;; kbd-mode.el --- Font locking for kmonad's .kbd files -*- lexical-binding: t -*-
+
+;; Copyright 2020–2022  slotThe
+;; URL: https://github.com/kmonad/kbd-mode
+;; Version: 0.0.1
+;; Package-Requires: ((emacs "24.3"))
+
+;; This file is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation; either version 3, or (at your option)
+;; any later version.
+;;
+;; This file is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;; This file adds basic font locking support for `.kbd' configuration
+;; files.
+;;
+;; To use this file, move it to a directory within your `load-path' and
+;; require it.  For example --- assuming that this file was placed
+;; within the `~/.config/emacs/elisp' directory:
+;;
+;;     (add-to-list 'load-path "~/.config/emacs/elisp/")
+;;     (require 'kbd-mode)
+;;
+;; If you use `use-package', you can express the above as
+;;
+;;     (use-package kbd-mode
+;;       :load-path "~/.config/emacs/elisp/")
+;;
+;; By default we highlight all keywords; you can change this by
+;; customizing the `kbd-mode-' variables.  For example, to disable the
+;; highlighting of already defined macros (i.e. of "@macro-name"), you
+;; can set `kbd-mode-show-macros' to `nil'.
+;;
+;; For keybindings, as well as commentary on the `kbd-mode-demo-mode'
+;; minor mode, see the associated README.md file.
+
+;;; Code:
+
+(require 'compile)
+
+(defgroup kbd nil
+  "Major mode for editing `.kbd' files."
+  :group 'languages)
+
+(defgroup kbd-demo nil
+  "A minor mode to test your configuration."
+  :group 'kbd)
+
+;;;; Custom variables
+
+(defgroup kbd-highlight nil
+  "Syntax highlighting for `kbd-mode'."
+  :group 'kbd)
+
+(defcustom kbd-mode-kexpr
+  '("defcfg" "defsrc" "defalias")
+  "A K-Expression."
+  :type '(repeat string)
+  :group 'kbd-highlight)
+
+;; HACK
+(defcustom kbd-mode-function-one
+  '("deflayer")
+  "Tokens that are treated as functions with one argument."
+  :type '(repeat string)
+  :group 'kbd-highlight)
+
+(defcustom kbd-mode-tokens
+  '(;; input tokens
+    "uinput-sink" "send-event-sink" "kext"
+    ;; output tokens
+    "device-file" "low-level-hook" "iokit-name")
+  "Input and output tokens."
+  :type '(repeat string)
+  :group 'kbd-highlight)
+
+(defcustom kbd-mode-defcfg-options
+  '("input" "output" "cmp-seq-delay" "cmp-seq" "init" "fallthrough" "allow-cmd")
+  "Options to give to `defcfg'."
+  :type '(repeat string)
+  :group 'kbd-highlight)
+
+(defcustom kbd-mode-button-modifiers
+  '("around-next-timeout" "around-next-single" "around-next" "around"
+    "tap-hold-next-release" "tap-hold-next" "tap-next-release" "tap-hold"
+    "tap-macro-release" "tap-macro" "multi-tap" "tap-next" "layer-toggle"
+    "layer-switch" "layer-add" "layer-rem" "layer-delay" "layer-next" "cmd-button")
+  "Button modifiers."
+  :type '(repeat string)
+  :group 'kbd-highlight)
+
+(defcustom kbd-mode-show-string
+  '("uinput-sink" "device-file" "cmd-button")
+  "Syntax highlight strings in S-expressions.
+When an S-expression begins with any of these keywords, highlight
+strings (delimited by double quotes) inside it."
+  :type '(repeat string)
+  :group 'kbd-highlight)
+
+(defcustom kbd-mode-show-macros t
+  "Whether to syntax highlight macros inside layout definitions.
+Default: t"
+  :type 'boolean
+  :group 'kbd-highlight)
+
+(defcustom kbd-mode-magic-focus nil
+  "Whether to enable magic focus.
+Whenever the `kbd-mode-demo-mode' buffer gets focused,
+automatically start try to start a new process for the config
+file.  When switching back to the config file, kill that process.
+
+Default: nil"
+  :type 'boolean
+  :group 'kbd-demo)
+
+(defcustom kbd-mode-kill-kmonad nil
+  "How to kill (or suspend) a running kmonad instance.
+This is used when invoking `kbd-mode-start-demo' and, in general,
+when entering `kbd-mode-demo-mode' because keyboards can't be
+grabbed twice."
+  :type 'string
+  :group 'kbd-demo)
+
+(defcustom kbd-mode-start-kmonad nil
+  "How to restart (or resume) kmonad.
+If there was an active kmonad instance running, which was killed
+by `kbd-mode-kill-kmonad', then this (re)starts kmonad with the
+given command upon exiting `kbd-mode-demo-mode'."
+  :type 'string
+  :group 'kbd-demo)
+
+;;;; Faces
+
+(defgroup kbd-highlight-faces nil
+  "Faces used for highlighting in `kbd-mode'."
+  :group 'kbd-highlight)
+
+(defface kbd-mode-kexpr-face
+  '((t :inherit font-lock-keyword-face))
+  "Face for a K-Expression."
+  :group 'kbd-highlight-faces)
+
+(defface kbd-mode-token-face
+  '((t :inherit font-lock-function-name-face))
+  "Face for input and output tokens."
+  :group 'kbd-highlight-faces)
+
+(defface kbd-mode-defcfg-option-face
+  '((t :inherit font-lock-builtin-face))
+  "Face for options one may give to `defcfg'."
+  :group 'kbd-highlight-faces)
+
+(defface kbd-mode-button-modifier-face
+  '((t :inherit font-lock-function-name-face))
+  "Face for all the button modifiers."
+  :group 'kbd-highlight-faces)
+
+(defface kbd-mode-variable-name-face
+  '((t :inherit font-lock-variable-name-face))
+  "Face for a variables, i.e. layer names, macros in layers,..."
+  :group 'kbd-highlight-faces)
+
+(defface kbd-mode-string-face
+  '((t :inherit font-lock-string-face))
+  "Face for strings."
+  :group 'kbd-highlight-faces)
+
+;;;; Functions
+
+(defun kbd-mode--show-macros? (show-macros)
+  "Decide whether to font-lock macros.
+If the argument SHOW-MACROS is non-nil, font-lock macros of the
+form `@MACRO-NAME' with `kbd-mode-variable-name-face'."
+  (let ((macro-regexp '(("\\(:?\\(@[^[:space:]]+\\)\\)"
+                         (1 'kbd-mode-variable-name-face)))))
+    (if show-macros
+        (font-lock-add-keywords 'kbd-mode macro-regexp)
+      (font-lock-remove-keywords 'kbd-mode macro-regexp))))
+
+;;; Vars
+
+(defvar kbd-mode-syntax-table
+  (let ((st (make-syntax-table)))
+    ;; Use ;; for regular comments and #| |# for line comments.
+    (modify-syntax-entry ?\; ". 12b" st)
+    (modify-syntax-entry ?\n "> b"   st)
+    (modify-syntax-entry ?\# ". 14"  st)
+    (modify-syntax-entry ?\| ". 23"  st)
+    ;; We don't need to highlight brackets, as they're only used inside
+    ;; layouts.
+    (modify-syntax-entry ?\[ "."     st)
+    (modify-syntax-entry ?\] "."     st)
+    ;; We highlight the necessary strings ourselves.
+    (modify-syntax-entry ?\" "."     st)
+    st)
+  "The basic syntax table for `kbd-mode'.")
+
+(defvar kbd-mode--font-lock-keywords
+  (let ((kexpr-regexp            (regexp-opt kbd-mode-kexpr            'words))
+        (token-regexp            (regexp-opt kbd-mode-tokens           'words))
+        (defcfg-options-regexp   (regexp-opt kbd-mode-defcfg-options   'words))
+        (button-modifiers-regexp (regexp-opt kbd-mode-button-modifiers 'words))
+        (function-one-regexp
+         (concat "\\(?:\\("
+                 (regexp-opt kbd-mode-function-one)
+                 "\\)\\([[:space:]]+[[:word:]]+\\)\\)"))
+        ;; Only highlight these strings; configuration files may explicitly
+        ;; use a " to emit a double quote, so we can't trust the default
+        ;; string highlighting.
+        (string-regexp
+         (concat "\\(['\(]"
+                 (regexp-opt kbd-mode-show-string)
+                 "\\)\\(\\S)+\\)\)")))
+    `((,token-regexp            (1 'kbd-mode-token-face          ))
+      (,kexpr-regexp            (1 'kbd-mode-kexpr-face          ))
+      (,button-modifiers-regexp (1 'kbd-mode-button-modifier-face))
+      (,defcfg-options-regexp   (1 'kbd-mode-defcfg-option-face  ))
+      (,function-one-regexp
+       (1 'kbd-mode-kexpr-face        )
+       (2 'kbd-mode-variable-name-face))
+      (,string-regexp
+       ("\"[^}]*?\""
+        (progn (goto-char (match-beginning 0)) (match-end 0))
+        (goto-char (match-end 0))
+        (0 'kbd-mode-string-face t)))))
+  "Keywords to be syntax highlighted.")
+
+;;; Define Major Mode
+
+;; Because the configuration language is in a lispy syntax, we can
+;; inherit from any lisp mode in order to get good parenthesis handling
+;; for free.
+
+(defvar kbd-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c C-c") #'kbd-mode-start-demo)
+    (define-key map (kbd "C-c C-z") #'kbd-mode-switch)
+    map))
+
+;;;###autoload
+(define-derived-mode kbd-mode emacs-lisp-mode "Kbd"
+  "Major mode for editing `.kbd' files.
+
+For details, see `https://github.com/kmonad/kmonad'."
+  (set-syntax-table kbd-mode-syntax-table)
+  (use-local-map kbd-mode-map)
+  (font-lock-add-keywords 'kbd-mode kbd-mode--font-lock-keywords)
+  (kbd-mode--show-macros? kbd-mode-show-macros)
+  ;; HACK
+  (defadvice redisplay (after refresh-font-locking activate)
+    (when (derived-mode-p 'kbd-mode)
+      (font-lock-fontify-buffer))))
+
+;; Associate the `.kbd' ending with `kbd-mode'.
+;;;###autoload
+(add-to-list 'auto-mode-alist '("\\.kbd\\'" . kbd-mode))
+
+;;;; Demo Minor Mode
+
+(defvar kbd-mode-demo-file nil
+  "Path to the users configuration file.
+This is used in `kbd-mode-demo-mode' for deciding what
+configuration to compile.")
+
+(defvar kbd-mode-had-kmonad? nil
+  "Whether the user had a running kmonad instance.
+This controls whether kmonad will be restarted by mean of
+`kbd-mode-start-kmonad' after exiting `kbd-mode-demo-mode'.")
+
+(defvar kbd-mode-demo-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c C-c") #'kbd-mode-stop-demo)
+    (define-key map (kbd "C-c C-z") #'kbd-mode-switch)
+    map))
+
+;;;###autoload
+(define-minor-mode kbd-mode-demo-mode
+  "Toggle kmonad demo mode.
+This is a minor mode, in which users can test their
+configurations."
+  :lighter " kbd-demo"
+  :keymap kbd-mode-demo-mode-map
+
+  (when kbd-mode-demo-mode
+    (unless (kbd-mode--valid-config?)
+      (kbd-mode--show-error)))
+
+  ;; Handle toggle
+  (when kbd-mode-magic-focus
+    (cond (kbd-mode-demo-mode
+           (add-hook 'window-selection-change-functions #'kbd-mode--toggle-demo nil t)
+           (add-hook 'focus-in-hook #'kbd-mode--create-kmonad-process nil t)
+           (add-hook 'focus-out-hook #'kbd-mode--kill-demo-process nil t))
+          (t
+           (remove-hook 'window-selection-change-functions #'kbd-mode--toggle-demo t)
+           (remove-hook 'focus-in-hook #'kbd-mode--create-kmonad-process t)
+           (remove-hook 'focus-out-hook #'kbd-mode--kill-demo-process t)))))
+
+;;;; Interactive Functions
+
+;;;###autoload
+(defun kbd-mode-start-demo ()
+  "Try the current configuration in a demo buffer.
+Use `kbd-mode-stop-demo' to stop the demo.  If the configuration
+file has errors, the demo will not start and an error buffer will
+be shown instead."
+  (interactive)
+  (setq kbd-mode-demo-file
+        (kbd-mode--find-kbd-file (buffer-file-name (current-buffer))))
+  (if (not (kbd-mode--valid-config?))
+      (kbd-mode--show-error)
+    (when (shell-command "ps -C kmonad")
+      (setq kbd-mode-had-kmonad? t)
+      (kbd-mode--kill-kmonad))
+    (kbd-mode--create-demo-buffer)
+    (pop-to-buffer "*kmonad-demo*")
+    (kbd-mode--create-kmonad-process)
+    (kbd-mode-demo-mode t)))
+
+(defun kbd-mode-stop-demo ()
+  "Stop the currently running demo."
+  (interactive)
+  (with-current-buffer "*kmonad-demo*"
+    (kbd-mode-demo-mode 0)
+    (kill-buffer-and-window)
+    (kbd-mode--kill-demo-process)
+    (when kbd-mode-had-kmonad?
+      (kbd-mode--start-kmonad))))
+
+(defun kbd-mode-switch ()
+  "Switch between the demo window and the config file."
+  (interactive)
+  (select-window (get-buffer-window
+                  (if (and (equal (buffer-name) "*kmonad-demo*")
+                           kbd-mode-demo-mode)
+                      (get-file-buffer kbd-mode-demo-file)
+                    "*kmonad-demo*"))))
+
+;;;; Helper Functions
+
+(defun kbd-mode--create-demo-buffer ()
+  "Create the *kmonad-demo* buffer."
+  (unless (get-buffer "*kmonad-demo*")
+    (display-buffer (get-buffer-create "*kmonad-demo*")
+                    '(display-buffer-at-bottom
+                      (window-height . 0.15)))))
+
+(defun kbd-mode--find-kbd-file (&optional file)
+  "Find the config file.
+If the optional argument FILE is given, use it instead.
+Otherwise, prompt the user for a choice."
+  (if (and file (string= (file-name-extension file) "kbd"))
+      file
+    (expand-file-name (read-file-name "Choose configuration file"))))
+
+(defun kbd-mode--valid-config? ()
+  "Check if the current configuration is valid."
+  (let ((command (kbd-mode--get-config-validation-command)))
+    (eq 0 (shell-command command))))
+
+(defun kbd-mode--create-kmonad-process ()
+  "Start the kmonad demo process in a dedicated buffer."
+  (when (get-buffer-process "*kmonad*")
+    (kbd-mode--kill-demo-process))
+  (start-process "kmonad-emacs" "*kmonad*" "kmonad" kbd-mode-demo-file))
+
+(defun kbd-mode--kill-demo-process ()
+  "Kill demo kmonad process, if possible."
+  (when (get-buffer-process "*kmonad*")
+    (kill-process "*kmonad*")))
+
+(defun kbd-mode--kill-kmonad ()
+  "Kill (or suspend) a running kmonad instance.
+The command used to kill kmonad is given by the
+`kbd-mode-kill-kmonad' variable."
+  (if kbd-mode-kill-kmonad
+      (shell-command kbd-mode-kill-kmonad)
+    (error "To kill the running kmonad instance, customize the `kbd-mode-kill-kmonad' variable!")))
+
+(defun kbd-mode--start-kmonad ()
+  "Start (or resume) a new kmonad process.
+The command used to start kmonad is given by the
+`kbd-mode-start-kmonad' variable."
+  (if kbd-mode-kill-kmonad
+      (call-process-shell-command
+       ;; Force the command to be executed asynchronously.
+       (if (eq (aref kbd-mode-start-kmonad
+                     (1- (length kbd-mode-start-kmonad)))
+               ?&)
+           kbd-mode-start-kmonad
+         (concat kbd-mode-start-kmonad "&")))
+    (error "To restart kmonad, customize the `kbd-mode-start-kmonad' variable!")))
+
+(defun kbd-mode--toggle-demo (&optional _window)
+  "Toggle the kmonad demo process.
+When the users exits the demo window, kill the demo process and
+start a \"normal\" kmonad process instead.  When re-entering the
+demo window, do the opposite; i.e., kill the running kmonad
+instance and spawn a demo process."
+  (cond ((kbd-mode--was-demo?)
+         (kbd-mode--kill-demo-process)
+         (kbd-mode--start-kmonad))
+        ((kbd-mode--valid-config?)
+         (kbd-mode--kill-kmonad)
+         (kbd-mode--create-kmonad-process))
+        (t
+         (kbd-mode--start-kmonad)
+         (kbd-mode--show-error))))
+
+(defun kbd-mode--was-demo? ()
+  "Was the previous buffer the kmonad demo buffer?"
+  (equal (window-buffer (previous-window))
+         (get-buffer "*kmonad-demo*")))
+
+(defun kbd-mode--show-error ()
+  "Show configuration errors in a compilation buffer."
+  (when kbd-mode-demo-mode
+    (quit-window 'kill "*kmonad-demo*"))
+  (compile (kbd-mode--get-config-validation-command)))
+
+(defun kbd-mode--get-config-validation-command ()
+  "Get validation command for `kbd-mode-demo-file'."
+  (concat "kmonad -d " kbd-mode-demo-file))
+
+;;;; Integration with `compilation-mode'
+
+(add-to-list 'compilation-error-regexp-alist 'kbd)
+(add-to-list 'compilation-error-regexp-alist-alist
+             '(kbd "^kmonad: Parse error at \\([0-9]+\\):\\([0-9]+\\)" nil 1 2))
+
+(provide 'kbd-mode)
+
+;;; kbd-mode.el ends here
+#+end_src
+
+***** fish
+#+begin_src emacs-lisp
+(use-package fish-mode
+  :mode "\\.fish\\'")
+#+end_src
+
+***** toml
+#+begin_src emacs-lisp
+(use-package toml-mode
+  :mode "\\.toml\\'")
+#+end_src
+
+***** yaml
+#+begin_src emacs-lisp
+(use-package yaml-mode
+  :mode "\\.ya?ml\\'")
+#+end_src
+
+***** markdown
+#+begin_src emacs-lisp
+(use-package markdown-mode
+  :mode "\\.md\\'")
+#+end_src
+
+***** git-modes
+#+begin_src emacs-lisp
+(use-package git-modes
+  :defer t)
+#+end_src
+
+***** archive
+****** nand2tetris
+#+begin_src emacs-lisp :tangle no
+(use-package nand2tetris
+  :mode (("\\.hdl\\'" . nand2tetris-mode)
+         ("\\.tst\\'" . nand2tetris-mode))
+  :config
+  (setq nand2tetris-core-base-dir jy/nand2tetris-core-base-dir))
+#+end_src
+
+****** vimrc-mode
+#+begin_src emacs-lisp :tangle no
+(use-package vimrc-mode
+  :mode "\\.vim\\(rc\\)?\\'")
+#+end_src
+
+**** misc
+***** csharp-mode
+#+begin_src emacs-lisp :tangle no
+(if (version< emacs-version "29")
+    (use-package csharp-mode
+      :mode "\\.cs\\'"))
+#+end_src
+
+csharp-mode has been moved into emacs core since emacs 29
+
+***** fsharp-mode
+#+begin_src emacs-lisp :tangle no
+(use-package fsharp-mode
+  :mode "\\.fs\\'")
+#+end_src
+
+***** ahk-mode
+#+begin_src emacs-lisp :tangle no
+(on-platform-do
+ (windows
+  (use-package ahk-mode
+    :mode "\\.ahk\\'")))
+#+end_src
+
+***** powershell
+#+begin_src emacs-lisp
+(on-platform-do
+ (windows
+  (use-package powershell
+    :mode "\\.ps1\\'")))
+#+end_src
+
+** indentation
+*** global
+#+begin_src emacs-lisp
+(setq-default indent-tabs-mode nil) ; Controls whether tabs are used for indentation
+(setq-default tab-width 4)
+(setq-default c-basic-offset 4)
+(setq-default c-default-style "k&r")
+#+end_src
+
+*** specific languages
+#+begin_src emacs-lisp
+;; Scheme
+(add-hook 'scheme-mode-hook
+		      (lambda ()
+			      (setq indent-tabs-mode nil)
+			      (setq tab-width 2)))
+
+;; Lisp
+(add-hook 'lisp-mode-hook
+		      (lambda ()
+			      (setq indent-tabs-mode nil)
+			      (setq tab-width 2)))
+
+;; C
+(add-hook 'c-mode-common-hook
+		      (lambda ()
+			      (setq indent-tabs-mode nil)
+			      (setq tab-width 4)))
+
+;; Python
+(add-hook 'python-mode-hook
+		      (lambda ()
+			      (setq indent-tabs-mode nil)
+			      (setq tab-width 4)
+			      (setq python-indent-offset 4)))
+
+;; JavaScript
+(defun jy/set-js-indentation ()
+  (setq-default js-indent-level 2)
+  (setq-default evil-shift-width js-indent-level)
+  (setq-default tab-width 2))
+(add-hook 'js2-mode-hook #'jy/set-js-indentation)
+
+;; Json
+(add-hook 'json-mode-hook #'jy/set-js-indentation)
+(add-hook 'jsonian-mode-hook #'jy/set-js-indentation)
+
+;; CSS
+(setq css-indent-offset 2)
+
+;; Old way for json
+;; (add-hook 'json-mode-hook
+;;          (lambda ()
+;;            (make-local-variable 'js-indent-level)
+;;            (setq js-indent-level 2)))
+
+;; lua
+(setq lua-indent-level 2)
+#+end_src
+
+json-mode indent width:
+[[https://stackoverflow.com/questions/17901900/how-can-i-set-a-tab-width-for-json-files][emacs - How can I set a tab width for JSON files? - Stack Overflow]]
+
+*** disable guessing python indent offset
+#+begin_src emacs-lisp
+(setq python-indent-guess-indent-offset nil)
+#+end_src
+
+*** buffer local variables
+**** using file header
+for python
+#+begin_src python :tangle no
+# -*- mode: python; indent-tabs-mode: nil; tab-width: 4; python-indent-offset: 4 -*-
+#+end_src
+
+for c
+#+begin_src C :tangle no
+// -*- mode: c-mode; indent-tabs-mode: nil; tab-width: 4; c-basic-offset: 4 -*-
+#+end_src
+
+*** per-directory local variables
+The usual way to define directory-local variables is to put a file named =.dir-locals.el= in a directory.
+
+You can also use =.dir-locals-2.el=; if found, Emacs loads it in addition to =.dir-locals.el=. This is useful when =.dir-locals.el= is under version control in a shared repository and can’t be used for personal customizations.
+
+#+begin_src emacs-lisp :tangle no
+((nil . ((indent-tabs-mode . t)
+         (fill-column . 80)
+         (mode . auto-fill)))
+ (c-mode . ((c-file-style . "BSD")
+            (subdirs . nil)))
+ ("src/imported"
+  . ((nil . ((change-log-default-name
+              . "ChangeLog.local"))))))
+#+end_src
+
+This sets the variables ‘indent-tabs-mode’ and fill-column for any file in the directory tree, and the indentation style for any C source file. The special mode element specifies the minor mode to be enabled. So (mode . auto-fill) specifies that the minor mode auto-fill-mode needs to be enabled. The special subdirs element is not a variable, but a special keyword which indicates that the C mode settings are only to be applied in the current directory, not in any subdirectories. Finally, it specifies a different ChangeLog file name for any file in the src/imported subdirectory.
+
+If the .dir-locals.el file contains multiple different values for a variable using different mode names or directories, the values will be applied in an order such that the values for more specific modes take priority over more generic modes. Values specified under a directory have even more priority. For example:
+
+#+begin_src emacs-lisp :tangle no
+((nil . ((fill-column . 40)))
+ (c-mode . ((fill-column . 50)))
+ (prog-mode . ((fill-column . 60)))
+ ("narrow-files" . ((nil . ((fill-column . 20))))))
+#+end_src
+
+** comment
+*** change c comment style
+use "//" instead of "/* */":
+#+begin_src emacs-lisp
+(add-hook 'c-mode-hook (lambda () (c-toggle-comment-style -1)))
+#+end_src
+
+source:
+https://emacs.stackexchange.com/questions/34941/how-to-use-c-comments-in-c-mode
+
